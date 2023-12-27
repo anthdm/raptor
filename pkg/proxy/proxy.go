@@ -61,11 +61,6 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	defer run.Close(context.Background())
 
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(err.Error()))
-		return
-	}
 	if err := run.HandleHTTP(w, r); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(err.Error()))
