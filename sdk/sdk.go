@@ -2,64 +2,61 @@ package ffaas
 
 import (
 	"bytes"
-	"encoding/binary"
 	"net/http"
+	"os"
 	"unsafe"
+
+	"github.com/vmihailenco/msgpack/v5"
 )
 
-var handler http.HandlerFunc
+var (
+	requestBuffer  []byte
+	responseBuffer []byte
+)
 
-func Handle(h http.HandlerFunc) {
-	handler = h
+type request struct {
+	Body   []byte
+	Method string
+	URL    string
 }
 
-var buffers = make(map[uintptr][]byte, 0)
+//go:wasmimport env malloc
+//go:noescape
+func malloc() uint32
 
-func readBufferFromMemory(bufferPosition *uint32, length uint32) []byte {
-	subjectBuffer := make([]byte, length)
-	pointer := uintptr(unsafe.Pointer(bufferPosition))
-	for i := 0; i < int(length); i++ {
-		s := *(*int32)(unsafe.Pointer(pointer + uintptr(i)))
-		subjectBuffer[i] = byte(s)
+//go:wasmimport env write_request
+//go:noescape
+func writeRequest(ptr uint32)
+
+//go:wasmimport env write_response
+//go:noescape
+func writeResponse(ptr uint32, size uint32)
+
+func HandleFunc(h http.HandlerFunc) {
+	requestSize := malloc()
+	requestBuffer = make([]byte, requestSize)
+
+	ptr := &requestBuffer[0]
+	unsafePtr := uint32(uintptr(unsafe.Pointer(ptr)))
+
+	writeRequest(unsafePtr)
+
+	var req request
+	if err := msgpack.Unmarshal(requestBuffer, &req); err != nil {
+		// todo
+		os.Exit(1)
 	}
-	return subjectBuffer
-}
 
-func makeBuffer(buf []byte) uint32 {
-	ptr := &buf[0]
-	unsafePtr := uintptr(unsafe.Pointer(ptr))
-	buffers[unsafePtr] = buf
-	return uint32(unsafePtr)
-}
+	// execute the handler of the caller
+	w := &ResponseWriter{}
+	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
+	h(w, r)
 
-//export alloc
-func alloc(size uint32) uint32 {
-	return makeBuffer(make([]byte, size))
-}
+	responseBuffer = w.buffer.Bytes()
+	ptr = &responseBuffer[0]
+	unsafePtr = uint32(uintptr(unsafe.Pointer(ptr)))
 
-//export handle_http_request
-func handleHandleHTTPRequest(ptr uint32, n uint32) uint32 {
-	// TODO: handle this buff.
-	buf := readBufferFromMemory(&ptr, n)
-	_ = buf
-
-	req, _ := http.NewRequest("GET", "/", bytes.NewReader([]byte("foo")))
-	rw := &ResponseWriter{}
-
-	handler(rw, req)
-
-	// Make a buffer for the response. Serialization works like this:
-	// 4 bytes uint32 for the length of the response
-	// response
-	// 4 bytes uint32 for the status code
-	b := rw.buffer.Bytes()
-	respb := make([]byte, 4+len(b)+4)
-	binary.LittleEndian.PutUint32(respb, uint32(len(b)))
-	copy(respb[4:], b)
-	binary.LittleEndian.PutUint32(respb[4+len(b):], uint32(rw.statusCode))
-	p := makeBuffer(respb)
-
-	return p
+	writeResponse(unsafePtr, uint32(w.buffer.Len()))
 }
 
 type ResponseWriter struct {

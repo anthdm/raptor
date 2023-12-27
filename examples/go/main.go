@@ -1,21 +1,15 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	ffaas "github.com/anthdm/ffaas/sdk"
 )
 
-func init() {
-	ffaas.Handle(myHandler)
-}
-
-func myHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("this is my response"))
+func handleChatGPTWrapper(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("from my ffaas application"))
 }
 
 func main() {
-	fmt.Println("hello")
+	ffaas.HandleFunc(handleChatGPTWrapper)
 }

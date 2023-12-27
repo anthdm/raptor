@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"encoding/binary"
 	"io"
 	"net/http"
 	"os"
@@ -13,7 +12,29 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type Request struct {
+func moduleMalloc(size uint32) wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		stack[0] = uint64(wapi.DecodeU32(uint64(size)))
+	}
+}
+
+func moduleWriteRequest(b []byte) wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		offset := wapi.DecodeU32(stack[0])
+		module.Memory().Write(offset, b)
+	}
+}
+
+func moduleWriteResponse(w io.Writer) wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		offset := wapi.DecodeU32(stack[0])
+		size := wapi.DecodeU32(stack[1])
+		resp, _ := module.Memory().Read(offset, size)
+		w.Write(resp)
+	}
+}
+
+type request struct {
 	Body   []byte
 	Method string
 	URL    string
@@ -40,59 +61,56 @@ func New(blob []byte, env map[string]string) (*Runtime, error) {
 		return nil, err
 	}
 
-	modConfig := wazero.NewModuleConfig().WithStdout(os.Stdout)
-	for key, val := range env {
-		modConfig = modConfig.WithEnv(key, val)
-	}
-	mod, err := runtime.InstantiateModule(ctx, compiledMod, modConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Runtime{
 		wasmBlob:    blob,
 		compiledMod: compiledMod,
-		module:      mod,
 		wruntime:    runtime,
 	}, nil
 }
 
 func (runtime *Runtime) HandleHTTP(w http.ResponseWriter, r *http.Request) error {
 	ctx := context.Background()
-	rbody, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	req := Request{
+	// TODO: maybe close the body
+	req := request{
 		Method: r.Method,
 		URL:    r.URL.Path,
-		Body:   rbody,
+		Body:   body,
 	}
 
-	reqb, err := msgpack.Marshal(req)
+	b, err := msgpack.Marshal(req)
 	if err != nil {
 		return err
 	}
 
-	alloc := runtime.module.ExportedFunction("alloc")
-	res, err := alloc.Call(ctx, uint64(len(reqb)))
+	rsize := uint32(len(b))
+	_, err = runtime.wruntime.NewHostModuleBuilder("env").
+		NewFunctionBuilder().
+		WithGoModuleFunction(moduleMalloc(rsize), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
+		Export("malloc").
+		NewFunctionBuilder().
+		WithGoModuleFunction(moduleWriteRequest(b), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
+		Export("write_request").
+		NewFunctionBuilder().
+		WithGoModuleFunction(moduleWriteResponse(w), []wapi.ValueType{wapi.ValueTypeI32, wapi.ValueTypeI32}, []wapi.ValueType{}).
+		Export("write_response").
+		Instantiate(ctx)
 	if err != nil {
 		return err
 	}
 
-	runtime.module.Memory().Write(uint32(res[0]), reqb)
-
-	handleHTTP := runtime.module.ExportedFunction("handle_http_request")
-	res, err = handleHTTP.Call(ctx, res[0], uint64(len(reqb)))
+	modConfig := wazero.NewModuleConfig().
+		WithStdout(os.Stdout).
+		WithStartFunctions()
+	mod, err := runtime.wruntime.InstantiateModule(ctx, runtime.compiledMod, modConfig)
 	if err != nil {
 		return err
 	}
-	nresponse, _ := runtime.module.Memory().ReadUint32Le(uint32(res[0]))
-	resBytes, _ := runtime.module.Memory().Read(uint32(res[0]), 4+nresponse+4)
-	statusCode := binary.LittleEndian.Uint32(resBytes[4+nresponse:])
 
-	w.WriteHeader(int(statusCode))
-	_, err = w.Write(resBytes[4 : len(resBytes)-4])
+	mod.ExportedFunction("_start").Call(ctx)
 
 	return err
 }
