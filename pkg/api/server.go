@@ -36,6 +36,7 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
+	s.router.Get("/app/{id}", makeAPIHandler(s.handleGetApp))
 	s.router.Post("/app", makeAPIHandler(s.handleCreateApp))
 	s.router.Post("/app/{id}/deploy", makeAPIHandler(s.handleCreateDeploy))
 }
@@ -90,11 +91,28 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
-
 	deploy := types.NewDeploy(appID, b)
 	if err := s.store.CreateDeploy(deploy); err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
 	}
-
+	// Each new deploy will be the app's active deploy
+	err = s.store.UpdateApp(appID, storage.UpdateAppParams{
+		ActiveDeploy: deploy.ID,
+	})
+	if err != nil {
+		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
+	}
 	return writeJSON(w, http.StatusOK, deploy)
+}
+
+func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) error {
+	appID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	app, err := s.store.GetAppByID(appID)
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, app)
 }

@@ -38,6 +38,15 @@ func (s *MemoryStore) GetAppByID(id uuid.UUID) (*types.App, error) {
 	return app, nil
 }
 
+type UpdateAppParams struct {
+	Environment  map[string]string
+	ActiveDeploy uuid.UUID
+}
+
+func (s *MemoryStore) UpdateApp(id uuid.UUID, params UpdateAppParams) error {
+	return nil
+}
+
 func (s *MemoryStore) CreateDeploy(deploy *types.Deploy) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

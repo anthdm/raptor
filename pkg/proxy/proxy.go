@@ -50,22 +50,16 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	// deploy, err := s.store.GetDeployByID(deployID)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusNotFound)
-	// 	w.Write([]byte(err.Error()))
-	// 	return
-	// }
-	// app, err := s.store.GetAppByID(deploy.AppID)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusNotFound)
-	// 	w.Write([]byte(err.Error()))
-	// 	return
-	// }
-	compCache, ok := s.cache.Get(deploy.ID)
+	deploy, err := s.store.GetDeployByID(app.ActiveDeploy)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	compCache, ok := s.cache.Get(app.ID)
 	if !ok {
 		compCache = wazero.NewCompilationCache()
-		s.cache.Put(deploy.ID, compCache)
+		s.cache.Put(app.ID, compCache)
 	}
 	run, err := runtime.New(deploy.Blob, compCache, app.Environment)
 	if err != nil {
