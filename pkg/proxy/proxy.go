@@ -38,24 +38,30 @@ func (s *Server) initRoutes() {
 }
 
 func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
-	deployID, err := uuid.Parse(chi.URLParam(r, ("id")))
+	appID, err := uuid.Parse(chi.URLParam(r, ("id")))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	deploy, err := s.store.GetDeployByID(deployID)
+	app, err := s.store.GetAppByID(appID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	app, err := s.store.GetAppByID(deploy.AppID)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(err.Error()))
-		return
-	}
+	// deploy, err := s.store.GetDeployByID(deployID)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusNotFound)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
+	// app, err := s.store.GetAppByID(deploy.AppID)
+	// if err != nil {
+	// 	w.WriteHeader(http.StatusNotFound)
+	// 	w.Write([]byte(err.Error()))
+	// 	return
+	// }
 	compCache, ok := s.cache.Get(deploy.ID)
 	if !ok {
 		compCache = wazero.NewCompilationCache()

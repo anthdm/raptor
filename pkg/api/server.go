@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
@@ -67,12 +66,8 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) error {
 	if err := params.validate(); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app := types.App{
-		ID:        uuid.New(),
-		Name:      params.Name,
-		CreatedAT: time.Now(),
-	}
-	if err := s.store.CreateApp(&app); err != nil {
+	app := types.NewApp(params.Name, nil)
+	if err := s.store.CreateApp(app); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, app)
@@ -86,7 +81,7 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app, err := s.store.GetAppByID(appID)
+	_, err = s.store.GetAppByID(appID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
@@ -96,13 +91,8 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 
-	deploy := types.Deploy{
-		ID:        uuid.New(),
-		AppID:     app.ID,
-		Blob:      b,
-		CreatedAT: time.Now(),
-	}
-	if err := s.store.CreateDeploy(&deploy); err != nil {
+	deploy := types.NewDeploy(appID, b)
+	if err := s.store.CreateDeploy(deploy); err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
 	}
 
