@@ -17,12 +17,14 @@ import (
 type Server struct {
 	router *chi.Mux
 	store  storage.Store
+	cache  storage.ModCacher
 }
 
 // NewServer returns a new server given a Store interface.
-func NewServer(store storage.Store) *Server {
+func NewServer(store storage.Store, cache storage.ModCacher) *Server {
 	return &Server{
 		store: store,
+		cache: cache,
 	}
 }
 

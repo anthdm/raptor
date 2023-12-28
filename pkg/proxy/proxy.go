@@ -8,19 +8,22 @@ import (
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/tetratelabs/wazero"
 )
 
 // Server is an HTTP server that will proxy and route the request to the corresponding function.
 type Server struct {
 	router *chi.Mux
 	store  storage.Store
+	cache  storage.ModCacher
 }
 
 // NewServer return a new (proxy) server given a storage.
-func NewServer(store storage.Store) *Server {
+func NewServer(store storage.Store, cache storage.ModCacher) *Server {
 	return &Server{
 		router: chi.NewRouter(),
 		store:  store,
+		cache:  cache,
 	}
 }
 
@@ -53,7 +56,12 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	run, err := runtime.New(deploy.Blob, app.Environment)
+	compCache, ok := s.cache.Get(deploy.ID)
+	if !ok {
+		compCache = wazero.NewCompilationCache()
+		s.cache.Put(deploy.ID, compCache)
+	}
+	run, err := runtime.New(deploy.Blob, compCache, app.Environment)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))

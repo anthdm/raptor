@@ -47,10 +47,12 @@ type Runtime struct {
 	wruntime    wazero.Runtime
 }
 
-func New(blob []byte, env map[string]string) (*Runtime, error) {
+func New(blob []byte, cache wazero.CompilationCache, env map[string]string) (*Runtime, error) {
 	var (
-		ctx     = context.Background()
-		config  = wazero.NewRuntimeConfig().WithDebugInfoEnabled(true)
+		ctx    = context.Background()
+		config = wazero.NewRuntimeConfig().
+			WithDebugInfoEnabled(true).
+			WithCompilationCache(cache)
 		runtime = wazero.NewRuntimeWithConfig(ctx, config)
 	)
 
