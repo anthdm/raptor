@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -21,10 +20,33 @@ type request struct {
 }
 
 type Runtime struct {
+	wazero.Runtime
+
 	compiledMod   wazero.CompiledModule
-	r             wazero.Runtime
 	requestBytes  []byte
 	responseBytes []byte
+}
+
+func New(cache wazero.CompilationCache, blob []byte) (*Runtime, error) {
+	var (
+		ctx    = context.Background()
+		config = wazero.NewRuntimeConfig().
+			WithCompilationCache(cache)
+		runtime = wazero.NewRuntimeWithConfig(ctx, config)
+	)
+	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
+	compiledMod, err := runtime.CompileModule(ctx, blob)
+	if err != nil {
+		return nil, err
+	}
+	r := &Runtime{
+		Runtime:     runtime,
+		compiledMod: compiledMod,
+	}
+	if err := r.initHostModule(context.Background()); err != nil {
+		return nil, err
+	}
+	return r, err
 }
 
 func (r *Runtime) moduleMalloc() wapi.GoModuleFunc {
@@ -51,45 +73,18 @@ func (r *Runtime) moduleWriteResponse() wapi.GoModuleFunc {
 }
 
 func (r *Runtime) initHostModule(ctx context.Context) error {
-	if r.r.Module("env") == nil {
-		_, err := r.r.NewHostModuleBuilder("env").
-			NewFunctionBuilder().
-			WithGoModuleFunction(r.moduleMalloc(), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
-			Export("malloc").
-			NewFunctionBuilder().
-			WithGoModuleFunction(r.moduleWriteRequest(), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
-			Export("write_request").
-			NewFunctionBuilder().
-			WithGoModuleFunction(r.moduleWriteResponse(), []wapi.ValueType{wapi.ValueTypeI32, wapi.ValueTypeI32}, []wapi.ValueType{}).
-			Export("write_response").
-			Instantiate(ctx)
-		return err
-	}
-	return nil
-}
-
-func NewWASIRuntime(cache wazero.CompilationCache, blob []byte) (wazero.Runtime, wazero.CompiledModule, error) {
-	var (
-		ctx    = context.Background()
-		config = wazero.NewRuntimeConfig().
-			WithCompilationCache(cache)
-		runtime = wazero.NewRuntimeWithConfig(ctx, config)
-	)
-	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
-	compiledMod, err := runtime.CompileModule(ctx, blob)
-	if err != nil {
-		return nil, nil, err
-	}
-	return runtime, compiledMod, nil
-}
-
-func New(runtime wazero.Runtime, compiledMod wazero.CompiledModule) (*Runtime, error) {
-	r := &Runtime{
-		r:           runtime,
-		compiledMod: compiledMod,
-	}
-	err := r.initHostModule(context.Background())
-	return r, err
+	_, err := r.NewHostModuleBuilder("env").
+		NewFunctionBuilder().
+		WithGoModuleFunction(r.moduleMalloc(), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
+		Export("malloc").
+		NewFunctionBuilder().
+		WithGoModuleFunction(r.moduleWriteRequest(), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
+		Export("write_request").
+		NewFunctionBuilder().
+		WithGoModuleFunction(r.moduleWriteResponse(), []wapi.ValueType{wapi.ValueTypeI32, wapi.ValueTypeI32}, []wapi.ValueType{}).
+		Export("write_response").
+		Instantiate(ctx)
+	return err
 }
 
 func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
@@ -97,7 +92,7 @@ func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
 	if err != nil {
 		return err
 	}
-	// TODO: maybe close the body
+	defer req.Body.Close()
 	b, err := msgpack.Marshal(request{
 		Method: req.Method,
 		URL:    req.URL.Path,
@@ -111,8 +106,7 @@ func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
 	modConfig := wazero.NewModuleConfig().
 		WithStdout(os.Stdout).
 		WithStartFunctions()
-
-	mod, err := r.r.InstantiateModule(ctx, r.compiledMod, modConfig)
+	mod, err := r.InstantiateModule(ctx, r.compiledMod, modConfig)
 	if err != nil {
 		return err
 	}
@@ -120,7 +114,6 @@ func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
 	if !strings.Contains(err.Error(), "closed with exit_code(0)") {
 		return err
 	}
-	fmt.Println(r.responseBytes)
 	return nil
 }
 
@@ -132,7 +125,7 @@ func (r *Runtime) Response() []byte {
 }
 
 func (runtime *Runtime) Close(ctx context.Context) error {
-	// runtime.requestBytes = nil
-	// runtime.responseBytes = nil
-	return runtime.r.Close(ctx)
+	runtime.requestBytes = nil
+	runtime.responseBytes = nil
+	return runtime.Runtime.Close(ctx)
 }

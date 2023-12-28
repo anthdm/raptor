@@ -68,13 +68,7 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		compCache = wazero.NewCompilationCache()
 		s.cache.Put(app.ID, compCache)
 	}
-	wrun, mod, err := runtime.NewWASIRuntime(compCache, deploy.Blob)
-	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(err.Error()))
-		return
-	}
-	run, err := runtime.New(wrun, mod)
+	run, err := runtime.New(compCache, deploy.Blob)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
@@ -86,4 +80,5 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(run.Response())
+	run.Close(r.Context())
 }

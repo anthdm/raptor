@@ -38,8 +38,6 @@ func main() {
 	proxy := proxy.NewServer(memstore, modCache)
 	slog.Info("app proxy server running", "port", httpProxyAddr)
 	log.Fatal(proxy.Listen(httpProxyAddr))
-
-	log.Fatal(proxy.Listen(":5000"))
 }
 
 func seed(store storage.Store, cache storage.ModCacher) {
