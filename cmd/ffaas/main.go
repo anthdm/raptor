@@ -48,19 +48,18 @@ func seed(store storage.Store, cache storage.ModCacher) {
 		log.Fatal(err)
 	}
 	app := types.App{
-		ID:          uuid.New(),
+		ID:          uuid.MustParse("09248ef6-c401-4601-8928-5964d61f2c61"),
 		Name:        "My first ffaas app",
 		Environment: map[string]string{"FOO": "fooenv"},
 		CreatedAT:   time.Now(),
 	}
+
+	deploy := types.NewDeploy(app.ID, b)
+	app.ActiveDeploy = deploy.ID
+	app.Endpoint = "http://localhost:5000/" + app.ID.String()
+	app.Deploys = append(app.Deploys, *deploy)
 	store.CreateApp(&app)
-	deploy := types.Deploy{
-		ID:        uuid.MustParse("09248ef6-c401-4601-8928-5964d61f2c61"),
-		AppID:     app.ID,
-		Blob:      b,
-		CreatedAT: time.Now(),
-	}
-	store.CreateDeploy(&deploy)
+	store.CreateDeploy(deploy)
 
 	compCache := wazero.NewCompilationCache()
 	var (
@@ -78,7 +77,7 @@ func seed(store storage.Store, cache storage.ModCacher) {
 		log.Fatal(err)
 	}
 
-	cache.Put(deploy.ID, compCache)
+	cache.Put(app.ID, compCache)
 
-	fmt.Printf("My first ffaas app available localhost:5000/%s\n", deploy.ID)
+	fmt.Printf("My first ffaas app available http://localhost:5000/%s\n", app.ID)
 }

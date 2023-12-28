@@ -44,6 +44,20 @@ type UpdateAppParams struct {
 }
 
 func (s *MemoryStore) UpdateApp(id uuid.UUID, params UpdateAppParams) error {
+	app, err := s.GetAppByID(id)
+	if err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if params.ActiveDeploy.String() != "00000000-0000-0000-0000-000000000000" {
+		app.ActiveDeploy = params.ActiveDeploy
+	}
+	if params.Environment != nil {
+		for key, val := range params.Environment {
+			app.Environment[key] = val
+		}
+	}
 	return nil
 }
 

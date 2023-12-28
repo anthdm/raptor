@@ -13,8 +13,12 @@ type App struct {
 	Endpoint     string            `json:"endpoint"`
 	ActiveDeploy uuid.UUID         `json:"activeDeploy"`
 	Environment  map[string]string `json:"-"`
-	Deploys      []Deploy          `json:"builds"`
-	CreatedAT    time.Time         `json:"createAt"`
+	Deploys      []Deploy          `json:"deploys"`
+	CreatedAT    time.Time         `json:"createdAt"`
+}
+
+func (app App) HasActiveDeploy() bool {
+	return app.ActiveDeploy.String() != "00000000-0000-0000-0000-000000000000"
 }
 
 func NewApp(name string, env map[string]string) *App {
@@ -26,8 +30,9 @@ func NewApp(name string, env map[string]string) *App {
 		ID:          id,
 		Name:        name,
 		Environment: env,
-		Endpoint:    fmt.Sprintf("http://localhost:3000/%s", id),
-		Deploys:     []Deploy{},
-		CreatedAT:   time.Now(),
+		// TODO: This is hardcoded AF :(
+		Endpoint:  fmt.Sprintf("http://localhost:5000/%s", id),
+		Deploys:   []Deploy{},
+		CreatedAT: time.Now(),
 	}
 }

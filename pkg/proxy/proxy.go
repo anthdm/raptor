@@ -50,6 +50,13 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+	if !app.HasActiveDeploy() {
+		w.WriteHeader(http.StatusNotFound)
+		// TODO: might want to render something decent?
+		w.Write([]byte("application does not have an active deploy yet"))
+		return
+
+	}
 	deploy, err := s.store.GetDeployByID(app.ActiveDeploy)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
