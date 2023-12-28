@@ -38,28 +38,35 @@ func (s *Server) initRoutes() {
 }
 
 func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
-	deployID, err := uuid.Parse(chi.URLParam(r, ("id")))
+	appID, err := uuid.Parse(chi.URLParam(r, ("id")))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	deploy, err := s.store.GetDeployByID(deployID)
+	app, err := s.store.GetAppByID(appID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	app, err := s.store.GetAppByID(deploy.AppID)
+	if !app.HasActiveDeploy() {
+		w.WriteHeader(http.StatusNotFound)
+		// TODO: might want to render something decent?
+		w.Write([]byte("application does not have an active deploy yet"))
+		return
+
+	}
+	deploy, err := s.store.GetDeployByID(app.ActiveDeploy)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	compCache, ok := s.cache.Get(deploy.ID)
+	compCache, ok := s.cache.Get(app.ID)
 	if !ok {
 		compCache = wazero.NewCompilationCache()
-		s.cache.Put(deploy.ID, compCache)
+		s.cache.Put(app.ID, compCache)
 	}
 	run, err := runtime.New(deploy.Blob, compCache, app.Environment)
 	if err != nil {
