@@ -107,6 +107,7 @@ func (runtime *Runtime) HandleHTTP(w http.ResponseWriter, r *http.Request) error
 	modConfig := wazero.NewModuleConfig().
 		WithStdout(os.Stdout).
 		WithStartFunctions()
+
 	mod, err := runtime.wruntime.InstantiateModule(ctx, runtime.compiledMod, modConfig)
 	if err != nil {
 		return err
