@@ -5,34 +5,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/vmihailenco/msgpack/v5"
 )
-
-func moduleMalloc(size uint32) wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		stack[0] = uint64(wapi.DecodeU32(uint64(size)))
-	}
-}
-
-func moduleWriteRequest(b []byte) wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		offset := wapi.DecodeU32(stack[0])
-		module.Memory().Write(offset, b)
-	}
-}
-
-func moduleWriteResponse(w io.Writer) wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		offset := wapi.DecodeU32(stack[0])
-		size := wapi.DecodeU32(stack[1])
-		resp, _ := module.Memory().Read(offset, size)
-		w.Write(resp)
-	}
-}
 
 type request struct {
 	Body   []byte
@@ -41,82 +20,112 @@ type request struct {
 }
 
 type Runtime struct {
-	wasmBlob    []byte
-	compiledMod wazero.CompiledModule
-	module      wapi.Module
-	wruntime    wazero.Runtime
+	wazero.Runtime
+
+	compiledMod   wazero.CompiledModule
+	requestBytes  []byte
+	responseBytes []byte
 }
 
-func New(blob []byte, cache wazero.CompilationCache, env map[string]string) (*Runtime, error) {
+func New(cache wazero.CompilationCache, blob []byte) (*Runtime, error) {
 	var (
 		ctx    = context.Background()
 		config = wazero.NewRuntimeConfig().
-			WithDebugInfoEnabled(true).
 			WithCompilationCache(cache)
 		runtime = wazero.NewRuntimeWithConfig(ctx, config)
 	)
-
 	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
-
 	compiledMod, err := runtime.CompileModule(ctx, blob)
 	if err != nil {
 		return nil, err
 	}
-
-	return &Runtime{
-		wasmBlob:    blob,
+	r := &Runtime{
+		Runtime:     runtime,
 		compiledMod: compiledMod,
-		wruntime:    runtime,
-	}, nil
+	}
+	if err := r.initHostModule(context.Background()); err != nil {
+		return nil, err
+	}
+	return r, err
 }
 
-func (runtime *Runtime) HandleHTTP(w http.ResponseWriter, r *http.Request) error {
-	ctx := context.Background()
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return err
+func (r *Runtime) moduleMalloc() wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		size := uint64(len(r.requestBytes))
+		stack[0] = uint64(wapi.DecodeU32(size))
 	}
-	// TODO: maybe close the body
-	req := request{
-		Method: r.Method,
-		URL:    r.URL.Path,
-		Body:   body,
-	}
+}
 
-	b, err := msgpack.Marshal(req)
-	if err != nil {
-		return err
+func (r *Runtime) moduleWriteRequest() wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		offset := wapi.DecodeU32(stack[0])
+		module.Memory().Write(offset, r.requestBytes)
 	}
+}
 
-	rsize := uint32(len(b))
-	_, err = runtime.wruntime.NewHostModuleBuilder("env").
+func (r *Runtime) moduleWriteResponse() wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		offset := wapi.DecodeU32(stack[0])
+		size := wapi.DecodeU32(stack[1])
+		resp, _ := module.Memory().Read(offset, size)
+		r.responseBytes = resp
+	}
+}
+
+func (r *Runtime) initHostModule(ctx context.Context) error {
+	_, err := r.NewHostModuleBuilder("env").
 		NewFunctionBuilder().
-		WithGoModuleFunction(moduleMalloc(rsize), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
+		WithGoModuleFunction(r.moduleMalloc(), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
 		Export("malloc").
 		NewFunctionBuilder().
-		WithGoModuleFunction(moduleWriteRequest(b), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
+		WithGoModuleFunction(r.moduleWriteRequest(), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
 		Export("write_request").
 		NewFunctionBuilder().
-		WithGoModuleFunction(moduleWriteResponse(w), []wapi.ValueType{wapi.ValueTypeI32, wapi.ValueTypeI32}, []wapi.ValueType{}).
+		WithGoModuleFunction(r.moduleWriteResponse(), []wapi.ValueType{wapi.ValueTypeI32, wapi.ValueTypeI32}, []wapi.ValueType{}).
 		Export("write_response").
 		Instantiate(ctx)
+	return err
+}
+
+func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
+	defer req.Body.Close()
+	b, err := msgpack.Marshal(request{
+		Method: req.Method,
+		URL:    req.URL.Path,
+		Body:   body,
+	})
+	if err != nil {
+		return err
+	}
+	r.requestBytes = b
 
 	modConfig := wazero.NewModuleConfig().
 		WithStdout(os.Stdout).
 		WithStartFunctions()
-	mod, err := runtime.wruntime.InstantiateModule(ctx, runtime.compiledMod, modConfig)
+	mod, err := r.InstantiateModule(ctx, r.compiledMod, modConfig)
 	if err != nil {
 		return err
 	}
+	_, err = mod.ExportedFunction("_start").Call(ctx)
+	if !strings.Contains(err.Error(), "closed with exit_code(0)") {
+		return err
+	}
+	return nil
+}
 
-	mod.ExportedFunction("_start").Call(ctx)
-
-	return err
+func (r *Runtime) Response() []byte {
+	b := make([]byte, len(r.responseBytes))
+	copy(b, r.responseBytes)
+	r.responseBytes = nil
+	return b
 }
 
 func (runtime *Runtime) Close(ctx context.Context) error {
-	return runtime.wruntime.Close(ctx)
+	runtime.requestBytes = nil
+	runtime.responseBytes = nil
+	return runtime.Runtime.Close(ctx)
 }
