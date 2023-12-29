@@ -5,11 +5,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strings"
 
+	"github.com/stealthrocket/wasi-go/imports"
+	"github.com/stealthrocket/wasi-go/imports/wasi_http"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -28,17 +28,35 @@ type Runtime struct {
 }
 
 func New(cache wazero.CompilationCache, blob []byte) (*Runtime, error) {
-	var (
-		ctx    = context.Background()
-		config = wazero.NewRuntimeConfig().
-			WithCompilationCache(cache)
-		runtime = wazero.NewRuntimeWithConfig(ctx, config)
-	)
-	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
+	ctx := context.Background()
+	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+
 	compiledMod, err := runtime.CompileModule(ctx, blob)
 	if err != nil {
 		return nil, err
 	}
+	builder := imports.NewBuilder().
+		WithName("ffaas").
+		WithArgs().
+		WithEnv().
+		WithDirs("/").
+		WithDials().
+		WithNonBlockingStdio(false).
+		WithSocketsExtension("auto", compiledMod).
+		//WithTracer(false, os.Stderr, wasi.WithTracerStringSize(tracerStringSize)).
+		WithMaxOpenFiles(1024).
+		WithMaxOpenDirs(1024)
+
+	_, _, err = builder.Instantiate(ctx, runtime)
+	if err != nil {
+		return nil, err
+	}
+	wasiHTTP := wasi_http.MakeWasiHTTP()
+	if err := wasiHTTP.Instantiate(ctx, runtime); err != nil {
+		return nil, err
+	}
+
 	r := &Runtime{
 		Runtime:     runtime,
 		compiledMod: compiledMod,
@@ -104,16 +122,15 @@ func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
 	r.requestBytes = b
 
 	modConfig := wazero.NewModuleConfig().
-		WithStdout(os.Stdout).
-		WithStartFunctions()
-	mod, err := r.InstantiateModule(ctx, r.compiledMod, modConfig)
+		WithStdout(os.Stdout)
+	_, err = r.InstantiateModule(ctx, r.compiledMod, modConfig)
 	if err != nil {
 		return err
 	}
-	_, err = mod.ExportedFunction("_start").Call(ctx)
-	if !strings.Contains(err.Error(), "closed with exit_code(0)") {
-		return err
-	}
+	// _, err = mod.ExportedFunction("_start").Call(ctx)
+	// if !strings.Contains(err.Error(), "closed with exit_code(0)") {
+	// 	return err
+	// }
 	return nil
 }
 

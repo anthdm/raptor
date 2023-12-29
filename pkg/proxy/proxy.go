@@ -2,6 +2,7 @@ package proxy
 
 import (
 	"context"
+	"log"
 	"net/http"
 
 	"github.com/anthdm/ffaas/pkg/runtime"
@@ -70,11 +71,13 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 	}
 	run, err := runtime.New(compCache, deploy.Blob)
 	if err != nil {
+		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
 	if err := run.Exec(context.Background(), r); err != nil {
+		log.Fatal(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
