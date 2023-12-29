@@ -40,14 +40,19 @@ func Get() Config {
 	return config
 }
 
+// makeURL takes a host address and returns a http URL.
 func makeURL(address string) string {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
-		return ""
+		host = address
+		port = ""
 	}
 
 	if host == "" {
 		host = "0.0.0.0"
+	}
+	if port == "" || port == "http" {
+		port = "80"
 	}
 
 	return "http://" + net.JoinHostPort(host, port)
