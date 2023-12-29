@@ -45,12 +45,12 @@ func main() {
 	fmt.Println()
 	server := api.NewServer(memstore, modCache)
 	go func() {
-		fmt.Printf("api server running\t0.0.0.0%s\n", config.Get().APIServerAddr)
+		fmt.Printf("api server running\t%s\n", config.GetApiUrl())
 		log.Fatal(server.Listen(config.Get().APIServerAddr))
 	}()
 
 	wasmServer := wasm.NewServer(memstore, modCache)
-	fmt.Printf("wasm server running\t0.0.0.0%s\n", config.Get().WASMServerAddr)
+	fmt.Printf("wasm server running\t%s\n", config.GetWasmUrl())
 	log.Fatal(wasmServer.Listen(config.Get().WASMServerAddr))
 }
 
@@ -59,19 +59,20 @@ func seedApplication(store storage.Store, cache storage.ModCacher) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	app := types.Application{
+	app := &types.Application{
 		ID:          uuid.MustParse("09248ef6-c401-4601-8928-5964d61f2c61"),
 		Name:        "My first ffaas app",
 		Environment: map[string]string{"FOO": "fooenv"},
 		CreatedAT:   time.Now(),
 	}
 
-	deploy := types.NewDeploy(app.ID, b)
-	app.ActiveDeploy = deploy.ID
-	app.Endpoint = "http://localhost" + config.Get().WASMServerAddr + "/" + app.ID.String()
-	app.Deploys = append(app.Deploys, *deploy)
-	store.CreateApp(&app)
+	deploy := types.NewDeploy(app, b)
+	app.ActiveDeployID = deploy.ID
+	app.Endpoint = config.GetWasmUrl() + "/" + app.ID.String()
+	app.DeployHistory = append(app.DeployHistory, *deploy)
+	store.CreateApp(app)
 	store.CreateDeploy(deploy)
+	fmt.Printf("app: %s\n", app.Endpoint)
 
 	compCache := wazero.NewCompilationCache()
 	runtime.Compile(context.Background(), compCache, deploy.Blob)

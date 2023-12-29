@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"net"
 	"os"
 
 	"github.com/pelletier/go-toml/v2"
@@ -37,4 +38,25 @@ func Parse(path string) error {
 
 func Get() Config {
 	return config
+}
+
+func makeURL(address string) string {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return ""
+	}
+
+	if host == "" {
+		host = "0.0.0.0"
+	}
+
+	return "http://" + net.JoinHostPort(host, port)
+}
+
+func GetWasmUrl() string {
+	return makeURL(config.WASMServerAddr)
+}
+
+func GetApiUrl() string {
+	return makeURL(config.APIServerAddr)
 }

@@ -34,11 +34,11 @@ func (s *Server) Listen(addr string) error {
 }
 
 func (s *Server) initRoutes() {
-	s.router.Handle("/{id}", http.HandlerFunc(s.handleRequest))
+	s.router.Handle("/{appID}", http.HandlerFunc(s.handleRequest))
 }
 
 func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
-	appID, err := uuid.Parse(chi.URLParam(r, ("id")))
+	appID, err := uuid.Parse(chi.URLParam(r, ("appID")))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
@@ -57,7 +57,7 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	deploy, err := s.store.GetDeployByID(app.ActiveDeploy)
+	deploy, err := s.store.GetDeployByID(app.ActiveDeployID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
