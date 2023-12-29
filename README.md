@@ -1,4 +1,6 @@
 # FFAAS
+145068ff-e155-4c75-ab9f-9dbef07c7ef6
+38ccb807-5b0d-4d34-b116-7573914589fb
 
 Fast functions as a service platform powered by WASM.
 

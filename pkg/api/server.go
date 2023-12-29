@@ -37,9 +37,10 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
-	s.router.Get("/application/{appID}", makeAPIHandler(s.handleGetApp))
+	s.router.Get("/application/{appID}", makeAPIHandler(s.handleGetApplication))
 	s.router.Post("/application", makeAPIHandler(s.handleCreateApp))
 	s.router.Post("/application/{appID}/deploy", makeAPIHandler(s.handleCreateDeploy))
+	s.router.Post("/application/{appID}/rollback", makeAPIHandler(s.handleCreateRollback))
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -53,12 +54,13 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 
 // CreateAppParams holds all the necessary fields to create a new ffaas application.
 type CreateAppParams struct {
-	Name string `json:"name"`
+	Name        string            `json:"name"`
+	Environment map[string]string `json:"environment"`
 }
 
 func (p CreateAppParams) validate() error {
 	if len(p.Name) < 3 || len(p.Name) > 20 {
-		return fmt.Errorf("name of the application should be longer than 3 and less than 20 characters")
+		return fmt.Errorf("name of the application should be longer than 3 and less than 40 characters")
 	}
 	return nil
 }
@@ -72,9 +74,9 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) error {
 	if err := params.validate(); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app := types.NewApplication(params.Name, nil)
+	app := types.NewApplication(params.Name, params.Environment)
 	app.Endpoint = config.GetWasmUrl() + "/" + app.ID.String()
-	if err := s.store.CreateApp(app); err != nil {
+	if err := s.store.CreateApplication(app); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, app)
@@ -88,7 +90,7 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app, err := s.store.GetAppByID(appID)
+	app, err := s.store.GetApplication(appID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
@@ -102,8 +104,8 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
 	}
 	// Each new deploy will be the app's active deploy
-	err = s.store.UpdateApp(appID, storage.UpdateAppParams{
-		ActiveDeploy: deploy.ID,
+	err = s.store.UpdateApplication(appID, storage.UpdateAppParams{
+		ActiveDeployID: deploy.ID,
 	})
 	if err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
@@ -111,14 +113,54 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	return writeJSON(w, http.StatusOK, deploy)
 }
 
-func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) handleGetApplication(w http.ResponseWriter, r *http.Request) error {
 	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app, err := s.store.GetAppByID(appID)
+	app, err := s.store.GetApplication(appID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, app)
+}
+
+// CreateRollbackParams holds all the necessary fields to rollback your application
+// to a specific deploy id (version).
+type CreateRollbackParams struct {
+	DeployID uuid.UUID `json:"deploy_id"`
+}
+
+func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) error {
+	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
+	if err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	app, err := s.store.GetApplication(appID)
+	if err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+
+	currentDeployID := app.ActiveDeployID
+
+	var params CreateRollbackParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+
+	deploy, err := s.store.GetDeploy(params.DeployID)
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+
+	updateParams := storage.UpdateAppParams{
+		ActiveDeployID: deploy.ID,
+	}
+	if err := s.store.UpdateApplication(appID, updateParams); err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+
+	s.cache.Delete(currentDeployID)
+
+	return writeJSON(w, http.StatusOK, map[string]any{"deploy": deploy.ID})
 }

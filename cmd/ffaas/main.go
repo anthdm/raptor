@@ -70,7 +70,7 @@ func seedApplication(store storage.Store, cache storage.ModCacher) {
 	app.ActiveDeployID = deploy.ID
 	app.Endpoint = config.GetWasmUrl() + "/" + app.ID.String()
 	app.DeployHistory = append(app.DeployHistory, *deploy)
-	store.CreateApp(app)
+	store.CreateApplication(app)
 	store.CreateDeploy(deploy)
 	fmt.Printf("app: %s\n", app.Endpoint)
 

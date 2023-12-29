@@ -43,7 +43,7 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	app, err := s.store.GetAppByID(appID)
+	app, err := s.store.GetApplication(appID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
@@ -56,7 +56,7 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	deploy, err := s.store.GetDeployByID(app.ActiveDeployID)
+	deploy, err := s.store.GetDeploy(app.ActiveDeployID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))

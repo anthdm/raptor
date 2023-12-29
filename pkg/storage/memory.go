@@ -21,14 +21,14 @@ func NewMemoryStore() *MemoryStore {
 	}
 }
 
-func (s *MemoryStore) CreateApp(app *types.Application) error {
+func (s *MemoryStore) CreateApplication(app *types.Application) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.apps[app.ID] = app
 	return nil
 }
 
-func (s *MemoryStore) GetAppByID(id uuid.UUID) (*types.Application, error) {
+func (s *MemoryStore) GetApplication(id uuid.UUID) (*types.Application, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	app, ok := s.apps[id]
@@ -39,19 +39,19 @@ func (s *MemoryStore) GetAppByID(id uuid.UUID) (*types.Application, error) {
 }
 
 type UpdateAppParams struct {
-	Environment  map[string]string
-	ActiveDeploy uuid.UUID
+	Environment    map[string]string
+	ActiveDeployID uuid.UUID
 }
 
-func (s *MemoryStore) UpdateApp(id uuid.UUID, params UpdateAppParams) error {
-	app, err := s.GetAppByID(id)
+func (s *MemoryStore) UpdateApplication(id uuid.UUID, params UpdateAppParams) error {
+	app, err := s.GetApplication(id)
 	if err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if params.ActiveDeploy.String() != "00000000-0000-0000-0000-000000000000" {
-		app.ActiveDeployID = params.ActiveDeploy
+	if params.ActiveDeployID.String() != "00000000-0000-0000-0000-000000000000" {
+		app.ActiveDeployID = params.ActiveDeployID
 	}
 	if params.Environment != nil {
 		for key, val := range params.Environment {
@@ -68,7 +68,7 @@ func (s *MemoryStore) CreateDeploy(deploy *types.Deploy) error {
 	return nil
 }
 
-func (s *MemoryStore) GetDeployByID(id uuid.UUID) (*types.Deploy, error) {
+func (s *MemoryStore) GetDeploy(id uuid.UUID) (*types.Deploy, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	deploy, ok := s.deploys[id]

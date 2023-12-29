@@ -6,9 +6,9 @@ import (
 )
 
 type Store interface {
-	CreateApp(*types.Application) error
-	UpdateApp(uuid.UUID, UpdateAppParams) error
+	CreateApplication(*types.Application) error
+	UpdateApplication(uuid.UUID, UpdateAppParams) error
+	GetApplication(uuid.UUID) (*types.Application, error)
 	CreateDeploy(*types.Deploy) error
-	GetDeployByID(uuid.UUID) (*types.Deploy, error)
-	GetAppByID(uuid.UUID) (*types.Application, error)
+	GetDeploy(uuid.UUID) (*types.Deploy, error)
 }
