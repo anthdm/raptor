@@ -10,11 +10,11 @@ import (
 
 	"github.com/anthdm/ffaas/pkg/api"
 	"github.com/anthdm/ffaas/pkg/proxy"
+	"github.com/anthdm/ffaas/pkg/runtime"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 const (
@@ -60,21 +60,7 @@ func seed(store storage.Store, cache storage.ModCacher) {
 	store.CreateDeploy(deploy)
 
 	compCache := wazero.NewCompilationCache()
-	var (
-		ctx    = context.Background()
-		config = wazero.NewRuntimeConfig().
-			WithDebugInfoEnabled(true).
-			WithCompilationCache(compCache)
-		runtime = wazero.NewRuntimeWithConfig(ctx, config)
-	)
-
-	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
-
-	_, err = runtime.CompileModule(ctx, b)
-	if err != nil {
-		log.Fatal(err)
-	}
-
+	runtime.Compile(context.Background(), compCache, deploy.Blob)
 	cache.Put(app.ID, compCache)
 
 	fmt.Printf("My first ffaas app available http://localhost:5000/%s\n", app.ID)

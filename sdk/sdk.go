@@ -6,6 +6,7 @@ import (
 	"os"
 	"unsafe"
 
+	_ "github.com/stealthrocket/net/http"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
