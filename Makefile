@@ -5,7 +5,7 @@ run: build
 	@./bin/ffaas --seed
 
 test:
-	@go test ./...
+	@go test ./pkg/* -v
 
 clean:
 	@rm -rf bin/ffaas
