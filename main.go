@@ -35,7 +35,7 @@ func run(wasmFile string, args []string) error {
 	}
 	ctx := context.Background()
 	cache := wazero.NewCompilationCache()
-	mod := runtime.NewRequestModule(nil)
+	mod, _ := runtime.NewRequestModule(nil)
 	runtime.Run(ctx, cache, b, mod)
 	fmt.Println(mod)
 	return nil

@@ -33,17 +33,31 @@ type RequestModule struct {
 	responseBytes []byte
 }
 
-func NewRequestModule(r *http.Request) *RequestModule {
-	req := request{
-		Body:   []byte("foobarbaz"),
-		Method: "GET",
-		URL:    "/",
+// TODO: could probably do more optimized stuff for larger bodies.
+// We want to limit the body size though...
+func NewRequestModule(r *http.Request) (*RequestModule, error) {
+	if r == nil {
+		return nil, fmt.Errorf("http.request is nil")
 	}
-	b, _ := msgpack.Marshal(req)
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Body.Close()
 
+	req := request{
+		Body:   b,
+		Method: r.Method,
+		URL:    r.URL.RequestURI(),
+	}
+
+	b, err = msgpack.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
 	return &RequestModule{
 		requestBytes: b,
-	}
+	}, nil
 }
 
 func (r *RequestModule) WriteResponse(w io.Writer) (int, error) {
@@ -130,8 +144,8 @@ func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req Re
 		WithDials().
 		WithNonBlockingStdio(false).
 		WithSocketsExtension("auto", wasmModule).
-		WithMaxOpenFiles(1024).
-		WithMaxOpenDirs(1024)
+		WithMaxOpenFiles(10).
+		WithMaxOpenDirs(10)
 
 	var system wasi.System
 	ctx, system, err = builder.Instantiate(ctx, runtime)
