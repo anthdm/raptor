@@ -113,11 +113,11 @@ func Compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) er
 	runtime := wazero.NewRuntimeWithConfig(ctx, config)
 	defer runtime.Close(ctx)
 
-	wasmModule, err := runtime.CompileModule(ctx, blob)
+	_, err := runtime.CompileModule(ctx, blob)
 	if err != nil {
 		return err
 	}
-	return wasmModule.Close(ctx)
+	return nil
 }
 
 func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req RequestPlugin) error {
@@ -133,7 +133,7 @@ func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req Re
 	if err != nil {
 		return err
 	}
-	defer wasmModule.Close(ctx)
+	// defer wasmModule.Close(ctx)
 
 	builder := imports.NewBuilder().
 		WithName("foo").
