@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"time"
 
@@ -13,34 +14,74 @@ import (
 	"github.com/anthdm/ffaas/pkg/runtime"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/ffaas/pkg/version"
 	"github.com/google/uuid"
+	"github.com/pelletier/go-toml/v2"
 	"github.com/tetratelabs/wazero"
 )
 
-const (
-	httpListenAddr = ":3000"
-	httpProxyAddr  = ":5000"
-)
+const defaultConfig = `
+wasmServerAddr 	= ":5000"
+apiServerAddr 	= ":3000"
+`
+
+type Config struct {
+	APIServerAddr  string
+	WASMServerAddr string
+}
+
+func parseConfig(path string) (Config, error) {
+	var config Config
+	_, err := os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.WriteFile("ffaas.toml", []byte(defaultConfig), os.ModePerm); err != nil {
+			return config, err
+		}
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return config, err
+	}
+	err = toml.Unmarshal(b, &config)
+	return config, err
+}
 
 func main() {
 	var (
-		memstore = storage.NewMemoryStore()
-		modCache = storage.NewDefaultModCache()
+		memstore   = storage.NewMemoryStore()
+		modCache   = storage.NewDefaultModCache()
+		configFile string
+		seed       bool
 	)
-	seed(memstore, modCache)
+	flagSet := flag.NewFlagSet("ffaas", flag.ExitOnError)
+	flagSet.StringVar(&configFile, "config", "ffaas.toml", "")
+	flagSet.BoolVar(&seed, "seed", false, "")
+	flagSet.Parse(os.Args[1:])
 
+	config, err := parseConfig(configFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if seed {
+		seedApplication(memstore, modCache)
+	}
+
+	fmt.Println(banner())
+	fmt.Println("The opensource faas platform powered by WASM")
+	fmt.Println()
 	server := api.NewServer(memstore, modCache)
 	go func() {
-		slog.Info("api server running", "port", httpListenAddr)
-		log.Fatal(server.Listen(httpListenAddr))
+		fmt.Printf("api server running\t0.0.0.0%s\n", config.APIServerAddr)
+		log.Fatal(server.Listen(config.APIServerAddr))
 	}()
 
 	proxy := proxy.NewServer(memstore, modCache)
-	slog.Info("app proxy server running", "port", httpProxyAddr)
-	log.Fatal(proxy.Listen(httpProxyAddr))
+	fmt.Printf("wasm server running\t0.0.0.0%s\n", config.WASMServerAddr)
+	log.Fatal(proxy.Listen(config.WASMServerAddr))
 }
 
-func seed(store storage.Store, cache storage.ModCacher) {
+func seedApplication(store storage.Store, cache storage.ModCacher) {
 	b, err := os.ReadFile("examples/go/app.wasm")
 	if err != nil {
 		log.Fatal(err)
@@ -62,6 +103,15 @@ func seed(store storage.Store, cache storage.ModCacher) {
 	compCache := wazero.NewCompilationCache()
 	runtime.Compile(context.Background(), compCache, deploy.Blob)
 	cache.Put(app.ID, compCache)
+}
 
-	fmt.Printf("My first ffaas app available http://localhost:5000/%s\n", app.ID)
+func banner() string {
+	return fmt.Sprintf(`
+  __  __                
+ / _|/ _|               
+| |_| |_ __ _  __ _ ___ 
+|  _|  _/ _  |/ _  / __|
+| | | || (_| | (_| \__ \
+|_| |_| \__,_|\__,_|___/ V%s
+	`, version.Version)
 }

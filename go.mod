@@ -12,8 +12,9 @@ require (
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/stealthrocket/wazergo v0.19.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect

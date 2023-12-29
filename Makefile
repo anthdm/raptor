@@ -2,7 +2,7 @@ build:
 	@go build -o bin/ffaas cmd/ffaas/main.go 
 
 run: build
-	@./bin/ffaas
+	@./bin/ffaas --seed
 
 test:
 	@go test ./...
