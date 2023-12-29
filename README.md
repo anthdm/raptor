@@ -25,7 +25,7 @@ Example Response:
 
 ---
 
-### /application/\<id\>
+### /application/\<app-id\>
 
 Get Application by ID
 
@@ -87,7 +87,7 @@ Example Response Body:
 
 ---
 
-### /application/\<id\>/deploy
+### /application/\<app-id\>/deploy
 
 Deploy Wasm Blob to Application
 
@@ -112,7 +112,7 @@ Example Response:
 
 ## Wasm Server Endpoints
 
-### /\<id\>
+### /\<app-id\>
 
 Call the Wasm function
 
