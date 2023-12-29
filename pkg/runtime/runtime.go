@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"
@@ -133,10 +132,11 @@ func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req Re
 	if err != nil {
 		return err
 	}
+	// TODO: Can't close cause it will invalidate the cache.
 	// defer wasmModule.Close(ctx)
 
 	builder := imports.NewBuilder().
-		WithName("foo").
+		WithName("ffaas").
 		WithArgs().
 		WithEnv().
 		WithDirs("/").
@@ -159,11 +159,6 @@ func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req Re
 		return err
 	}
 
-	start := time.Now()
 	_, err = runtime.InstantiateModule(ctx, wasmModule, wazero.NewModuleConfig().WithStdout(os.Stdout))
-	if err != nil {
-		return err
-	}
-	fmt.Println(time.Since(start))
-	return nil
+	return err
 }
