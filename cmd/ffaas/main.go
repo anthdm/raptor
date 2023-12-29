@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/anthdm/ffaas/pkg/api"
-	"github.com/anthdm/ffaas/pkg/proxy"
 	"github.com/anthdm/ffaas/pkg/runtime"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/anthdm/ffaas/pkg/version"
+	"github.com/anthdm/ffaas/pkg/wasm"
 	"github.com/google/uuid"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/tetratelabs/wazero"
@@ -76,9 +76,9 @@ func main() {
 		log.Fatal(server.Listen(config.APIServerAddr))
 	}()
 
-	proxy := proxy.NewServer(memstore, modCache)
+	wasmServer := wasm.NewServer(memstore, modCache)
 	fmt.Printf("wasm server running\t0.0.0.0%s\n", config.WASMServerAddr)
-	log.Fatal(proxy.Listen(config.WASMServerAddr))
+	log.Fatal(wasmServer.Listen(config.WASMServerAddr))
 }
 
 func seedApplication(store storage.Store, cache storage.ModCacher) {

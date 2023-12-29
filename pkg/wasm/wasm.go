@@ -1,4 +1,4 @@
-package proxy
+package wasm
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ type Server struct {
 	cache  storage.ModCacher
 }
 
-// NewServer return a new (proxy) server given a storage.
+// NewServer return a new wasm server given a storage and a mod cache.
 func NewServer(store storage.Store, cache storage.ModCacher) *Server {
 	return &Server{
 		router: chi.NewRouter(),
