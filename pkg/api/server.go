@@ -36,9 +36,9 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
-	s.router.Get("/app/{id}", makeAPIHandler(s.handleGetApp))
-	s.router.Post("/app", makeAPIHandler(s.handleCreateApp))
-	s.router.Post("/app/{id}", makeAPIHandler(s.handleCreateDeploy))
+	s.router.Get("/application/{id}", makeAPIHandler(s.handleGetApp))
+	s.router.Post("/application", makeAPIHandler(s.handleCreateApp))
+	s.router.Post("/application/{id}", makeAPIHandler(s.handleCreateDeploy))
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +67,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) error {
 	if err := params.validate(); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app := types.NewApp(params.Name, nil)
+	app := types.NewApplication(params.Name, nil)
 	if err := s.store.CreateApp(app); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}

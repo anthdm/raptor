@@ -10,25 +10,25 @@ import (
 
 type MemoryStore struct {
 	mu      sync.RWMutex
-	apps    map[uuid.UUID]*types.App
+	apps    map[uuid.UUID]*types.Application
 	deploys map[uuid.UUID]*types.Deploy
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		apps:    make(map[uuid.UUID]*types.App),
+		apps:    make(map[uuid.UUID]*types.Application),
 		deploys: make(map[uuid.UUID]*types.Deploy),
 	}
 }
 
-func (s *MemoryStore) CreateApp(app *types.App) error {
+func (s *MemoryStore) CreateApp(app *types.Application) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.apps[app.ID] = app
 	return nil
 }
 
-func (s *MemoryStore) GetAppByID(id uuid.UUID) (*types.App, error) {
+func (s *MemoryStore) GetAppByID(id uuid.UUID) (*types.Application, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	app, ok := s.apps[id]

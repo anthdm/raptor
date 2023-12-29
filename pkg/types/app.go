@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type App struct {
+type Application struct {
 	ID           uuid.UUID         `json:"id"`
 	Name         string            `json:"name"`
 	Endpoint     string            `json:"endpoint"`
@@ -17,16 +17,16 @@ type App struct {
 	CreatedAT    time.Time         `json:"createdAt"`
 }
 
-func (app App) HasActiveDeploy() bool {
+func (app Application) HasActiveDeploy() bool {
 	return app.ActiveDeploy.String() != "00000000-0000-0000-0000-000000000000"
 }
 
-func NewApp(name string, env map[string]string) *App {
+func NewApplication(name string, env map[string]string) *Application {
 	if env == nil {
 		env = make(map[string]string)
 	}
 	id := uuid.New()
-	return &App{
+	return &Application{
 		ID:          id,
 		Name:        name,
 		Environment: env,
