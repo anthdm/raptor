@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/anthdm/ffaas/pkg/config"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/go-chi/chi/v5"
@@ -36,14 +37,18 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
-	s.router.Get("/application/{id}", makeAPIHandler(s.handleGetApp))
+	s.router.Get("/application/{appID}", makeAPIHandler(s.handleGetApp))
 	s.router.Post("/application", makeAPIHandler(s.handleCreateApp))
-	s.router.Post("/application/{id}", makeAPIHandler(s.handleCreateDeploy))
+	s.router.Post("/application/{appID}/deploy", makeAPIHandler(s.handleCreateDeploy))
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	status := map[string]string{
+		"status": "ok",
+	}
+	json.NewEncoder(w).Encode(status)
 }
 
 // CreateAppParams holds all the necessary fields to create a new ffaas application.
@@ -68,6 +73,7 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) error {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 	app := types.NewApplication(params.Name, nil)
+	app.Endpoint = config.GetWasmUrl() + "/" + app.ID.String()
 	if err := s.store.CreateApp(app); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
@@ -78,11 +84,11 @@ func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) error {
 type CreateDeployParams struct{}
 
 func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) error {
-	appID, err := uuid.Parse(chi.URLParam(r, "id"))
+	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	_, err = s.store.GetAppByID(appID)
+	app, err := s.store.GetAppByID(appID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
@@ -91,7 +97,7 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
-	deploy := types.NewDeploy(appID, b)
+	deploy := types.NewDeploy(app, b)
 	if err := s.store.CreateDeploy(deploy); err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
 	}
@@ -106,7 +112,7 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (s *Server) handleGetApp(w http.ResponseWriter, r *http.Request) error {
-	appID, err := uuid.Parse(chi.URLParam(r, "id"))
+	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}

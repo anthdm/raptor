@@ -51,7 +51,7 @@ func (s *MemoryStore) UpdateApp(id uuid.UUID, params UpdateAppParams) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if params.ActiveDeploy.String() != "00000000-0000-0000-0000-000000000000" {
-		app.ActiveDeploy = params.ActiveDeploy
+		app.ActiveDeployID = params.ActiveDeploy
 	}
 	if params.Environment != nil {
 		for key, val := range params.Environment {
