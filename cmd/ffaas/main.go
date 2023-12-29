@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -59,7 +60,7 @@ func seed(store storage.Store, cache storage.ModCacher) {
 	store.CreateDeploy(deploy)
 
 	compCache := wazero.NewCompilationCache()
-	runtime.New(compCache, deploy.Blob)
+	runtime.Compile(context.Background(), compCache, deploy.Blob)
 
 	cache.Put(app.ID, compCache)
 

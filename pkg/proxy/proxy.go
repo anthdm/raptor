@@ -1,8 +1,6 @@
 package proxy
 
 import (
-	"context"
-	"log"
 	"net/http"
 
 	"github.com/anthdm/ffaas/pkg/runtime"
@@ -69,19 +67,15 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		compCache = wazero.NewCompilationCache()
 		s.cache.Put(app.ID, compCache)
 	}
-	run, err := runtime.New(compCache, deploy.Blob)
-	if err != nil {
-		log.Fatal(err)
+	reqPlugin := runtime.NewRequestModule(r)
+	if err := runtime.Run(r.Context(), compCache, deploy.Blob, reqPlugin); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	if err := run.Exec(context.Background(), r); err != nil {
-		log.Fatal(err)
+	if _, err := reqPlugin.WriteResponse(w); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	w.Write(run.Response())
-	run.Close(r.Context())
 }

@@ -2,10 +2,13 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"time"
 
+	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"
 	"github.com/stealthrocket/wasi-go/imports/wasi_http"
 	"github.com/tetratelabs/wazero"
@@ -19,79 +22,36 @@ type request struct {
 	URL    string
 }
 
-type Runtime struct {
-	wazero.Runtime
+type RequestPlugin interface {
+	Instanciate(context.Context, wazero.Runtime) error
+	WriteResponse(io.Writer) (int, error)
+	Close(context.Context) error
+}
 
-	compiledMod   wazero.CompiledModule
+type RequestModule struct {
 	requestBytes  []byte
 	responseBytes []byte
 }
 
-func New(cache wazero.CompilationCache, blob []byte) (*Runtime, error) {
-	ctx := context.Background()
-	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
-	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+func NewRequestModule(r *http.Request) *RequestModule {
+	req := request{
+		Body:   []byte("foobarbaz"),
+		Method: "GET",
+		URL:    "/",
+	}
+	b, _ := msgpack.Marshal(req)
 
-	compiledMod, err := runtime.CompileModule(ctx, blob)
-	if err != nil {
-		return nil, err
-	}
-	builder := imports.NewBuilder().
-		WithName("ffaas").
-		WithArgs().
-		WithEnv().
-		WithDirs("/").
-		WithDials().
-		WithNonBlockingStdio(false).
-		WithSocketsExtension("auto", compiledMod).
-		//WithTracer(false, os.Stderr, wasi.WithTracerStringSize(tracerStringSize)).
-		WithMaxOpenFiles(1024).
-		WithMaxOpenDirs(1024)
-
-	_, _, err = builder.Instantiate(ctx, runtime)
-	if err != nil {
-		return nil, err
-	}
-	wasiHTTP := wasi_http.MakeWasiHTTP()
-	if err := wasiHTTP.Instantiate(ctx, runtime); err != nil {
-		return nil, err
-	}
-
-	r := &Runtime{
-		Runtime:     runtime,
-		compiledMod: compiledMod,
-	}
-	if err := r.initHostModule(context.Background()); err != nil {
-		return nil, err
-	}
-	return r, err
-}
-
-func (r *Runtime) moduleMalloc() wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		size := uint64(len(r.requestBytes))
-		stack[0] = uint64(wapi.DecodeU32(size))
+	return &RequestModule{
+		requestBytes: b,
 	}
 }
 
-func (r *Runtime) moduleWriteRequest() wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		offset := wapi.DecodeU32(stack[0])
-		module.Memory().Write(offset, r.requestBytes)
-	}
+func (r *RequestModule) WriteResponse(w io.Writer) (int, error) {
+	return w.Write(r.responseBytes)
 }
 
-func (r *Runtime) moduleWriteResponse() wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		offset := wapi.DecodeU32(stack[0])
-		size := wapi.DecodeU32(stack[1])
-		resp, _ := module.Memory().Read(offset, size)
-		r.responseBytes = resp
-	}
-}
-
-func (r *Runtime) initHostModule(ctx context.Context) error {
-	_, err := r.NewHostModuleBuilder("env").
+func (r *RequestModule) Instanciate(ctx context.Context, runtime wazero.Runtime) error {
+	_, err := runtime.NewHostModuleBuilder("env").
 		NewFunctionBuilder().
 		WithGoModuleFunction(r.moduleMalloc(), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
 		Export("malloc").
@@ -105,44 +65,91 @@ func (r *Runtime) initHostModule(ctx context.Context) error {
 	return err
 }
 
-func (r *Runtime) Exec(ctx context.Context, req *http.Request) error {
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-	defer req.Body.Close()
-	b, err := msgpack.Marshal(request{
-		Method: req.Method,
-		URL:    req.URL.Path,
-		Body:   body,
-	})
-	if err != nil {
-		return err
-	}
-	r.requestBytes = b
-
-	modConfig := wazero.NewModuleConfig().
-		WithStdout(os.Stdout)
-	_, err = r.InstantiateModule(ctx, r.compiledMod, modConfig)
-	if err != nil {
-		return err
-	}
-	// _, err = mod.ExportedFunction("_start").Call(ctx)
-	// if !strings.Contains(err.Error(), "closed with exit_code(0)") {
-	// 	return err
-	// }
+func (r *RequestModule) Close(ctx context.Context) error {
+	r.responseBytes = nil
+	r.requestBytes = nil
 	return nil
 }
 
-func (r *Runtime) Response() []byte {
-	b := make([]byte, len(r.responseBytes))
-	copy(b, r.responseBytes)
-	r.responseBytes = nil
-	return b
+func (r *RequestModule) moduleMalloc() wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		size := uint64(len(r.requestBytes))
+		stack[0] = uint64(wapi.DecodeU32(size))
+	}
 }
 
-func (runtime *Runtime) Close(ctx context.Context) error {
-	runtime.requestBytes = nil
-	runtime.responseBytes = nil
-	return runtime.Runtime.Close(ctx)
+func (r *RequestModule) moduleWriteRequest() wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		offset := wapi.DecodeU32(stack[0])
+		module.Memory().Write(offset, r.requestBytes)
+	}
+}
+
+func (r *RequestModule) moduleWriteResponse() wapi.GoModuleFunc {
+	return func(ctx context.Context, module wapi.Module, stack []uint64) {
+		offset := wapi.DecodeU32(stack[0])
+		size := wapi.DecodeU32(stack[1])
+		resp, _ := module.Memory().Read(offset, size)
+		r.responseBytes = resp
+	}
+}
+
+func Compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) error {
+	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+	defer runtime.Close(ctx)
+
+	wasmModule, err := runtime.CompileModule(ctx, blob)
+	if err != nil {
+		return err
+	}
+	return wasmModule.Close(ctx)
+}
+
+func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req RequestPlugin) error {
+	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+	defer runtime.Close(ctx)
+
+	if err := req.Instanciate(ctx, runtime); err != nil {
+		return err
+	}
+
+	wasmModule, err := runtime.CompileModule(ctx, blob)
+	if err != nil {
+		return err
+	}
+	defer wasmModule.Close(ctx)
+
+	builder := imports.NewBuilder().
+		WithName("foo").
+		WithArgs().
+		WithEnv().
+		WithDirs("/").
+		WithListens().
+		WithDials().
+		WithNonBlockingStdio(false).
+		WithSocketsExtension("auto", wasmModule).
+		WithMaxOpenFiles(1024).
+		WithMaxOpenDirs(1024)
+
+	var system wasi.System
+	ctx, system, err = builder.Instantiate(ctx, runtime)
+	if err != nil {
+		return err
+	}
+	defer system.Close(ctx)
+
+	wasiHTTP := wasi_http.MakeWasiHTTP()
+	if err := wasiHTTP.Instantiate(ctx, runtime); err != nil {
+		return err
+	}
+
+	start := time.Now()
+	_, err = runtime.InstantiateModule(ctx, wasmModule, wazero.NewModuleConfig().WithStdout(os.Stdout))
+	if err != nil {
+		return err
+	}
+	fmt.Println(time.Since(start))
+	return nil
 }
