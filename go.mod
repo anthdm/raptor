@@ -12,6 +12,13 @@ require (
 )
 
 require (
+	github.com/anthdm/hollywood v0.0.0-20231229180503-ac25f94bfd67 // indirect
+	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
+	github.com/zeebo/xxh3 v1.0.2 // indirect
+	google.golang.org/protobuf v1.30.0 // indirect
+)
+
+require (
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/stealthrocket/wazergo v0.19.1 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect

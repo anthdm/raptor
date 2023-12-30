@@ -14,7 +14,7 @@ import (
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/anthdm/ffaas/pkg/version"
-	"github.com/anthdm/ffaas/pkg/wasm"
+	"github.com/anthdm/ffaas/pkg/wasmhttp"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 )
@@ -49,9 +49,9 @@ func main() {
 		log.Fatal(server.Listen(config.Get().APIServerAddr))
 	}()
 
-	wasmServer := wasm.NewServer(memstore, modCache)
+	wasmServer := wasmhttp.NewServer(config.Get().WASMServerAddr, memstore, modCache)
 	fmt.Printf("wasm server running\t%s\n", config.GetWasmUrl())
-	log.Fatal(wasmServer.Listen(config.Get().WASMServerAddr))
+	log.Fatal(wasmServer.Listen())
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {

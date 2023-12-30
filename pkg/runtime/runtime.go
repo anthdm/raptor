@@ -16,6 +16,7 @@ import (
 
 type request struct {
 	Body   []byte
+	Header http.Header
 	Method string
 	URL    string
 }
@@ -46,13 +47,15 @@ func NewRequestModule(r *http.Request) (*RequestModule, error) {
 	req := request{
 		Body:   b,
 		Method: r.Method,
-		URL:    r.URL.RequestURI(),
+		Header: r.Header,
+		URL:    r.URL.String(),
 	}
 
 	b, err = msgpack.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
+
 	return &RequestModule{
 		requestBytes: b,
 	}, nil

@@ -18,6 +18,7 @@ var (
 type request struct {
 	Body   []byte
 	Method string
+	Header http.Header
 	URL    string
 }
 
@@ -51,6 +52,7 @@ func HandleFunc(h http.HandlerFunc) {
 	// execute the handler of the caller
 	w := &ResponseWriter{}
 	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
+	r.Header = req.Header
 	h(w, r)
 
 	responseBuffer = w.buffer.Bytes()
