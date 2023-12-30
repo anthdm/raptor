@@ -37,7 +37,7 @@ func main() {
 	}
 
 	if seed {
-		seedApplication(memstore, modCache)
+		seedEndpoint(memstore, modCache)
 	}
 
 	fmt.Println(banner())
@@ -54,7 +54,7 @@ func main() {
 	log.Fatal(wasmServer.Listen(config.Get().WASMServerAddr))
 }
 
-func seedApplication(store storage.Store, cache storage.ModCacher) {
+func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	b, err := os.ReadFile("examples/go/app.wasm")
 	if err != nil {
 		log.Fatal(err)
@@ -69,10 +69,10 @@ func seedApplication(store storage.Store, cache storage.ModCacher) {
 	deploy := types.NewDeploy(endpoint, b)
 	endpoint.ActiveDeployID = deploy.ID
 	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
-	endpoint.DeployHistory = append(endpoint.DeployHistory, *deploy)
+	endpoint.DeployHistory = append(endpoint.DeployHistory, deploy)
 	store.CreateEndpoint(endpoint)
 	store.CreateDeploy(deploy)
-	fmt.Printf("app: %s\n", endpoint.URL)
+	fmt.Printf("endpoint: %s\n", endpoint.URL)
 
 	compCache := wazero.NewCompilationCache()
 	runtime.Compile(context.Background(), compCache, deploy.Blob)

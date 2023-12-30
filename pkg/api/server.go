@@ -112,6 +112,7 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	// Each new deploy will be the endpoint's active deploy
 	err = s.store.UpdateEndpoint(endpointID, storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
+		Deploys:        []*types.Deploy{deploy},
 	})
 	if err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))

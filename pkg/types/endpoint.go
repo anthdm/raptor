@@ -12,7 +12,7 @@ type Endpoint struct {
 	URL            string            `json:"url"`
 	ActiveDeployID uuid.UUID         `json:"active_deploy_id"`
 	Environment    map[string]string `json:"-"`
-	DeployHistory  []Deploy          `json:"deploy_history"`
+	DeployHistory  []*Deploy         `json:"deploy_history"`
 	CreatedAT      time.Time         `json:"created_at"`
 }
 
@@ -30,7 +30,7 @@ func NewEndpoint(name string, env map[string]string) *Endpoint {
 		Name:          name,
 		Environment:   env,
 		URL:           "",
-		DeployHistory: []Deploy{},
+		DeployHistory: []*Deploy{},
 		CreatedAT:     time.Now(),
 	}
 }

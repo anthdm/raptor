@@ -16,4 +16,5 @@ type Store interface {
 type UpdateEndpointParams struct {
 	Environment    map[string]string
 	ActiveDeployID uuid.UUID
+	Deploys        []*types.Deploy
 }
