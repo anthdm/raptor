@@ -11,16 +11,22 @@ on:
 jobs:
   build:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.platform }}
+
+    strategy:
+      matrix: 
+        go-version: ['1.19', '1.20', '1.21.x']
+        platform: ['ubuntu-latest', 'macos-latest', 'windows-latest']
 
     steps:
       - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: ${{ matrix.go-version }}
 
       - name: Get Code
         uses: actions/checkout@v4
 
       - name: Test
         run: go test ./pkg/*
+     
