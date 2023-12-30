@@ -12,7 +12,7 @@ coming soon...
 
 Get server status
 
-- Method: `POST`
+- Method: `GET`
 - Response Content-Type: `application/json`
 
 Request Body: `empty`

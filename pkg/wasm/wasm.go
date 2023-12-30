@@ -33,17 +33,17 @@ func (s *Server) Listen(addr string) error {
 }
 
 func (s *Server) initRoutes() {
-	s.router.Handle("/{appID}", http.HandlerFunc(s.handleRequest))
+	s.router.Handle("/{id}", http.HandlerFunc(s.handleRequest))
 }
 
 func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
-	appID, err := uuid.Parse(chi.URLParam(r, ("appID")))
+	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	app, err := s.store.GetApplication(appID)
+	app, err := s.store.GetEndpoint(endpointID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
@@ -52,7 +52,7 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 	if !app.HasActiveDeploy() {
 		w.WriteHeader(http.StatusNotFound)
 		// TODO: might want to render something decent?
-		w.Write([]byte("application does not have an active deploy yet"))
+		w.Write([]byte("endpoint does not have an active deploy yet"))
 		return
 
 	}

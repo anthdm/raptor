@@ -37,10 +37,10 @@ func (s *Server) Listen(addr string) error {
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
-	s.router.Get("/application/{appID}", makeAPIHandler(s.handleGetApplication))
-	s.router.Post("/application", makeAPIHandler(s.handleCreateApp))
-	s.router.Post("/application/{appID}/deploy", makeAPIHandler(s.handleCreateDeploy))
-	s.router.Post("/application/{appID}/rollback", makeAPIHandler(s.handleCreateRollback))
+	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
+	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
+	s.router.Post("/endpoint/{id}/deploy", makeAPIHandler(s.handleCreateDeploy))
+	s.router.Post("/endpoint/{id}/rollback", makeAPIHandler(s.handleCreateRollback))
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -52,45 +52,51 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(status)
 }
 
-// CreateAppParams holds all the necessary fields to create a new ffaas application.
-type CreateAppParams struct {
+// CreateEndpointParams holds all the necessary fields to create a new ffaas application.
+type CreateEndpointParams struct {
 	Name        string            `json:"name"`
 	Environment map[string]string `json:"environment"`
 }
 
-func (p CreateAppParams) validate() error {
-	if len(p.Name) < 3 || len(p.Name) > 20 {
-		return fmt.Errorf("name of the application should be longer than 3 and less than 40 characters")
+func (p CreateEndpointParams) validate() error {
+	minlen, maxlen := 3, 50
+	if len(p.Name) < minlen {
+		return fmt.Errorf("endpoint name should be at least %d characters long", minlen)
+	}
+	if len(p.Name) > maxlen {
+		return fmt.Errorf("endpoint name can be maximum %d characters long", maxlen)
 	}
 	return nil
 }
 
-func (s *Server) handleCreateApp(w http.ResponseWriter, r *http.Request) error {
-	var params CreateAppParams
+func (s *Server) handleCreateEndpoint(w http.ResponseWriter, r *http.Request) error {
+	var params CreateEndpointParams
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(ErrDecodeRequestBody))
 	}
 	defer r.Body.Close()
+
 	if err := params.validate(); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app := types.NewApplication(params.Name, params.Environment)
-	app.Endpoint = config.GetWasmUrl() + "/" + app.ID.String()
-	if err := s.store.CreateApplication(app); err != nil {
+
+	endpoint := types.NewEndpoint(params.Name, params.Environment)
+	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
+	if err := s.store.CreateEndpoint(endpoint); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	return writeJSON(w, http.StatusOK, app)
+	return writeJSON(w, http.StatusOK, endpoint)
 }
 
 // CreateDeployParams holds all the necessary fields to deploy a new function.
 type CreateDeployParams struct{}
 
 func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) error {
-	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
+	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app, err := s.store.GetApplication(appID)
+	endpoint, err := s.store.GetEndpoint(endpointID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
@@ -99,12 +105,12 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
-	deploy := types.NewDeploy(app, b)
+	deploy := types.NewDeploy(endpoint, b)
 	if err := s.store.CreateDeploy(deploy); err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
 	}
-	// Each new deploy will be the app's active deploy
-	err = s.store.UpdateApplication(appID, storage.UpdateAppParams{
+	// Each new deploy will be the endpoint's active deploy
+	err = s.store.UpdateEndpoint(endpointID, storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
 	})
 	if err != nil {
@@ -113,16 +119,16 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	return writeJSON(w, http.StatusOK, deploy)
 }
 
-func (s *Server) handleGetApplication(w http.ResponseWriter, r *http.Request) error {
-	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
+func (s *Server) handleGetEndpoint(w http.ResponseWriter, r *http.Request) error {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app, err := s.store.GetApplication(appID)
+	endpoint, err := s.store.GetEndpoint(id)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
-	return writeJSON(w, http.StatusOK, app)
+	return writeJSON(w, http.StatusOK, endpoint)
 }
 
 // CreateRollbackParams holds all the necessary fields to rollback your application
@@ -132,16 +138,16 @@ type CreateRollbackParams struct {
 }
 
 func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) error {
-	appID, err := uuid.Parse(chi.URLParam(r, "appID"))
+	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	app, err := s.store.GetApplication(appID)
+	endpoint, err := s.store.GetEndpoint(endpointID)
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	currentDeployID := app.ActiveDeployID
+	currentDeployID := endpoint.ActiveDeployID
 
 	var params CreateRollbackParams
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
@@ -153,10 +159,10 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 
-	updateParams := storage.UpdateAppParams{
+	updateParams := storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
 	}
-	if err := s.store.UpdateApplication(appID, updateParams); err != nil {
+	if err := s.store.UpdateEndpoint(endpointID, updateParams); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
