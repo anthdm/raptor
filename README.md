@@ -10,7 +10,7 @@ coming soon...
 
 Get server status
 
-- Method: `POST`
+- Method: `GET`
 - Response Content-Type: `application/json`
 
 Request Body: `empty`
@@ -25,9 +25,9 @@ Example Response:
 
 ---
 
-### /application/\<app-id\>
+### /endpoint/\<id\>
 
-Get Application by ID
+Get Endpoint by ID
 
 - Method: `GET`
 - Response Content-Type: `application/json`
@@ -40,12 +40,12 @@ Example Response:
 {
   "id": "09248ef6-c401-4601-8928-5964d61f2c61",
   "name": "My first ffaas app",
-  "endpoint": "http://0.0.0.0:4000/09248ef6-c401-4601-8928-5964d61f2c61",
+  "url": "http://0.0.0.0:4000/09248ef6-c401-4601-8928-5964d61f2c61",
   "active_deploy_id": "aeacab67-91d6-45c1-ae29-f27922b0fcf0",
   "deploy_history": [
     {
       "id": "aeacab67-91d6-45c1-ae29-f27922b0fcf0",
-      "app_id": "09248ef6-c401-4601-8928-5964d61f2c61",
+      "endpoint_id": "09248ef6-c401-4601-8928-5964d61f2c61",
       "hash": "c4dd6753109e47b317a4fc792d231b64",
       "created_at": "2023-12-29T12:19:20.594726Z"
     }
@@ -56,9 +56,9 @@ Example Response:
 
 ---
 
-### /application
+### /endpoint
 
-Create a new application
+Create a new endpoint
 
 - Method: `POST`
 - Request Content-Type: `application/json`
@@ -68,7 +68,7 @@ Example Request Body:
 
 ```json
 {
-  "name": "my-app"
+  "name": "my-endpoint"
 }
 ```
 
@@ -77,8 +77,8 @@ Example Response Body:
 ```json
 {
   "id": "2488b7be-e3d3-4e4c-8f79-13d9d568483d",
-  "name": "my-app",
-  "endpoint": "http://0.0.0.0:4000/2488b7be-e3d3-4e4c-8f79-13d9d568483d",
+  "name": "my-endpoint",
+  "url": "http://0.0.0.0:4000/2488b7be-e3d3-4e4c-8f79-13d9d568483d",
   "active_deploy_id": "00000000-0000-0000-0000-000000000000",
   "deploy_history": [],
   "created_at": "2023-12-29T12:08:20.542039Z"
@@ -87,9 +87,9 @@ Example Response Body:
 
 ---
 
-### /application/\<app-id\>/deploy
+### /endpoint/\<id\>/deploy
 
-Deploy Wasm Blob to Application
+Deploy Wasm Blob to Endpoint
 
 - Method: `POST`
 - Request Content-Type: `application/octet-stream`
@@ -102,7 +102,7 @@ Example Response:
 ```json
 {
   "id": "e2a1ceea-d19e-4231-adc9-995ac61bdaf0",
-  "app_id": "2488b7be-e3d3-4e4c-8f79-13d9d568483d",
+  "endpoint_id": "2488b7be-e3d3-4e4c-8f79-13d9d568483d",
   "hash": "75b196bcd44611d9f74d62ed16a54e03",
   "created_at": "2023-12-29T12:12:39.91252Z"
 }
@@ -112,7 +112,7 @@ Example Response:
 
 ## Wasm Server Endpoints
 
-### /\<app-id\>
+### /\<endpoint-id\>
 
 Call the Wasm function
 

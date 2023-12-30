@@ -37,7 +37,7 @@ func main() {
 	}
 
 	if seed {
-		seedApplication(memstore, modCache)
+		seedEndpoint(memstore, modCache)
 	}
 
 	fmt.Println(banner())
@@ -54,29 +54,29 @@ func main() {
 	log.Fatal(wasmServer.Listen(config.Get().WASMServerAddr))
 }
 
-func seedApplication(store storage.Store, cache storage.ModCacher) {
+func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	b, err := os.ReadFile("examples/go/app.wasm")
 	if err != nil {
 		log.Fatal(err)
 	}
-	app := &types.Application{
+	endpoint := &types.Endpoint{
 		ID:          uuid.MustParse("09248ef6-c401-4601-8928-5964d61f2c61"),
-		Name:        "My first ffaas app",
-		Environment: map[string]string{"FOO": "fooenv"},
+		Name:        "Catfact parser",
+		Environment: map[string]string{"FOO": "bar"},
 		CreatedAT:   time.Now(),
 	}
 
-	deploy := types.NewDeploy(app, b)
-	app.ActiveDeployID = deploy.ID
-	app.Endpoint = config.GetWasmUrl() + "/" + app.ID.String()
-	app.DeployHistory = append(app.DeployHistory, *deploy)
-	store.CreateApp(app)
+	deploy := types.NewDeploy(endpoint, b)
+	endpoint.ActiveDeployID = deploy.ID
+	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
+	endpoint.DeployHistory = append(endpoint.DeployHistory, deploy)
+	store.CreateEndpoint(endpoint)
 	store.CreateDeploy(deploy)
-	fmt.Printf("app: %s\n", app.Endpoint)
+	fmt.Printf("endpoint: %s\n", endpoint.URL)
 
 	compCache := wazero.NewCompilationCache()
 	runtime.Compile(context.Background(), compCache, deploy.Blob)
-	cache.Put(app.ID, compCache)
+	cache.Put(endpoint.ID, compCache)
 }
 
 func banner() string {

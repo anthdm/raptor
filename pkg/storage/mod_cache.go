@@ -10,6 +10,7 @@ import (
 type ModCacher interface {
 	Put(uuid.UUID, wazero.CompilationCache)
 	Get(uuid.UUID) (wazero.CompilationCache, bool)
+	Delete(uuid.UUID) error
 }
 
 type DefaultModCache struct {
@@ -34,4 +35,11 @@ func (c *DefaultModCache) Get(id uuid.UUID) (wazero.CompilationCache, bool) {
 	defer c.mu.RUnlock()
 	mod, ok := c.cache[id]
 	return mod, ok
+}
+
+func (c *DefaultModCache) Delete(id uuid.UUID) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.cache, id)
+	return nil
 }

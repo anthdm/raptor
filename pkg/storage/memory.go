@@ -9,54 +9,52 @@ import (
 )
 
 type MemoryStore struct {
-	mu      sync.RWMutex
-	apps    map[uuid.UUID]*types.Application
-	deploys map[uuid.UUID]*types.Deploy
+	mu        sync.RWMutex
+	endpoints map[uuid.UUID]*types.Endpoint
+	deploys   map[uuid.UUID]*types.Deploy
 }
 
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
-		apps:    make(map[uuid.UUID]*types.Application),
-		deploys: make(map[uuid.UUID]*types.Deploy),
+		endpoints: make(map[uuid.UUID]*types.Endpoint),
+		deploys:   make(map[uuid.UUID]*types.Deploy),
 	}
 }
 
-func (s *MemoryStore) CreateApp(app *types.Application) error {
+func (s *MemoryStore) CreateEndpoint(e *types.Endpoint) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.apps[app.ID] = app
+	s.endpoints[e.ID] = e
 	return nil
 }
 
-func (s *MemoryStore) GetAppByID(id uuid.UUID) (*types.Application, error) {
+func (s *MemoryStore) GetEndpoint(id uuid.UUID) (*types.Endpoint, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	app, ok := s.apps[id]
+	e, ok := s.endpoints[id]
 	if !ok {
-		return nil, fmt.Errorf("could not find app with id (%s)", id)
+		return nil, fmt.Errorf("could not find endpoint with id (%s)", id)
 	}
-	return app, nil
+	return e, nil
 }
 
-type UpdateAppParams struct {
-	Environment  map[string]string
-	ActiveDeploy uuid.UUID
-}
-
-func (s *MemoryStore) UpdateApp(id uuid.UUID, params UpdateAppParams) error {
-	app, err := s.GetAppByID(id)
+func (s *MemoryStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) error {
+	endpoint, err := s.GetEndpoint(id)
 	if err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if params.ActiveDeploy.String() != "00000000-0000-0000-0000-000000000000" {
-		app.ActiveDeployID = params.ActiveDeploy
+	if params.ActiveDeployID.String() != "00000000-0000-0000-0000-000000000000" {
+		endpoint.ActiveDeployID = params.ActiveDeployID
 	}
 	if params.Environment != nil {
 		for key, val := range params.Environment {
-			app.Environment[key] = val
+			endpoint.Environment[key] = val
 		}
+	}
+	if len(params.Deploys) > 0 {
+		endpoint.DeployHistory = append(endpoint.DeployHistory, params.Deploys...)
 	}
 	return nil
 }
@@ -68,7 +66,7 @@ func (s *MemoryStore) CreateDeploy(deploy *types.Deploy) error {
 	return nil
 }
 
-func (s *MemoryStore) GetDeployByID(id uuid.UUID) (*types.Deploy, error) {
+func (s *MemoryStore) GetDeploy(id uuid.UUID) (*types.Deploy, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	deploy, ok := s.deploys[id]

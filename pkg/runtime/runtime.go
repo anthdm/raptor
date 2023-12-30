@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"
@@ -119,26 +118,45 @@ func Compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) er
 	return nil
 }
 
-func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req RequestPlugin) error {
-	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+// TODO: add some kind of log capture...
+type Args struct {
+	Blob          []byte
+	Cache         wazero.CompilationCache
+	RequestPlugin RequestPlugin
+	Env           map[string]string
+}
+
+func Run(ctx context.Context, args Args) error {
+	config := wazero.NewRuntimeConfig().WithCompilationCache(args.Cache)
 	runtime := wazero.NewRuntimeWithConfig(ctx, config)
 	defer runtime.Close(ctx)
 
-	if err := req.Instanciate(ctx, runtime); err != nil {
+	if err := args.RequestPlugin.Instanciate(ctx, runtime); err != nil {
 		return err
 	}
 
-	wasmModule, err := runtime.CompileModule(ctx, blob)
+	wasmModule, err := runtime.CompileModule(ctx, args.Blob)
 	if err != nil {
 		return err
 	}
 	// TODO: Can't close cause it will invalidate the cache.
 	// defer wasmModule.Close(ctx)
 
+	// TODO: Open with append mode or configure it like that ok!
+	// f, err := os.Create("foo")
+	// if err != nil {
+	// 	return err
+	// }
+	//f.Seek(0, io.SeekStart)
+	// fd := int(f.Fd())
+	fd := -1
+
 	builder := imports.NewBuilder().
 		WithName("ffaas").
 		WithArgs().
-		WithEnv().
+		WithStdio(fd, fd, fd).
+		WithEnv(envMapToSlice(args.Env)...).
+		// TODO: we want to mount this to some virtual folder?
 		WithDirs("/").
 		WithListens().
 		WithDials().
@@ -159,6 +177,18 @@ func Run(ctx context.Context, cache wazero.CompilationCache, blob []byte, req Re
 		return err
 	}
 
-	_, err = runtime.InstantiateModule(ctx, wasmModule, wazero.NewModuleConfig().WithStdout(os.Stdout))
+	_, err = runtime.InstantiateModule(ctx, wasmModule, wazero.NewModuleConfig())
+
 	return err
+}
+
+func envMapToSlice(env map[string]string) []string {
+	slice := make([]string, len(env))
+	i := 0
+	for k, v := range env {
+		s := fmt.Sprintf("%s=%s", k, v)
+		slice[i] = s
+		i++
+	}
+	return slice
 }

@@ -6,9 +6,15 @@ import (
 )
 
 type Store interface {
-	CreateApp(*types.Application) error
-	UpdateApp(uuid.UUID, UpdateAppParams) error
+	CreateEndpoint(*types.Endpoint) error
+	UpdateEndpoint(uuid.UUID, UpdateEndpointParams) error
+	GetEndpoint(uuid.UUID) (*types.Endpoint, error)
 	CreateDeploy(*types.Deploy) error
-	GetDeployByID(uuid.UUID) (*types.Deploy, error)
-	GetAppByID(uuid.UUID) (*types.Application, error)
+	GetDeploy(uuid.UUID) (*types.Deploy, error)
+}
+
+type UpdateEndpointParams struct {
+	Environment    map[string]string
+	ActiveDeployID uuid.UUID
+	Deploys        []*types.Deploy
 }

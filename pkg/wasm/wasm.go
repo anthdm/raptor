@@ -1,7 +1,6 @@
 package wasm
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/anthdm/ffaas/pkg/runtime"
@@ -34,40 +33,39 @@ func (s *Server) Listen(addr string) error {
 }
 
 func (s *Server) initRoutes() {
-	s.router.Handle("/{appID}", http.HandlerFunc(s.handleRequest))
+	s.router.Handle("/{id}", http.HandlerFunc(s.handleRequest))
 }
 
 func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
-	appID, err := uuid.Parse(chi.URLParam(r, ("appID")))
+	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	app, err := s.store.GetAppByID(appID)
+	endpoint, err := s.store.GetEndpoint(endpointID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	if !app.HasActiveDeploy() {
+	if !endpoint.HasActiveDeploy() {
 		w.WriteHeader(http.StatusNotFound)
 		// TODO: might want to render something decent?
-		w.Write([]byte("application does not have an active deploy yet"))
+		w.Write([]byte("endpoint does not have an active deploy yet"))
 		return
 
 	}
-	deploy, err := s.store.GetDeployByID(app.ActiveDeployID)
+	deploy, err := s.store.GetDeploy(endpoint.ActiveDeployID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	compCache, ok := s.cache.Get(app.ID)
+	compCache, ok := s.cache.Get(endpoint.ID)
 	if !ok {
-		fmt.Println("no cache")
 		compCache = wazero.NewCompilationCache()
-		s.cache.Put(app.ID, compCache)
+		s.cache.Put(endpoint.ID, compCache)
 	}
 	reqPlugin, err := runtime.NewRequestModule(r)
 	if err != nil {
@@ -75,7 +73,14 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	if err := runtime.Run(r.Context(), compCache, deploy.Blob, reqPlugin); err != nil {
+
+	args := runtime.Args{
+		Blob:          deploy.Blob,
+		Cache:         compCache,
+		RequestPlugin: reqPlugin,
+		Env:           endpoint.Environment,
+	}
+	if err := runtime.Run(r.Context(), args); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
