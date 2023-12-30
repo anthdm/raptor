@@ -45,15 +45,14 @@ func HandleFunc(h http.HandlerFunc) {
 
 	var req request
 	if err := msgpack.Unmarshal(requestBuffer, &req); err != nil {
-		// todo
+		// TODO: how are we handling errors coming from the guest?
 		os.Exit(1)
 	}
 
-	// execute the handler of the caller
 	w := &ResponseWriter{}
 	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
 	r.Header = req.Header
-	h(w, r)
+	h(w, r) // execute the user's handler
 
 	responseBuffer = w.buffer.Bytes()
 	ptr = &responseBuffer[0]

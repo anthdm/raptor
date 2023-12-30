@@ -13,6 +13,11 @@ type Store interface {
 	GetDeploy(uuid.UUID) (*types.Deploy, error)
 }
 
+type MetricStore interface {
+	CreateRuntimeMetric(*types.RuntimeMetric) error
+	GetRuntimeMetrics(uuid.UUID) ([]types.RuntimeMetric, error)
+}
+
 type UpdateEndpointParams struct {
 	Environment    map[string]string
 	ActiveDeployID uuid.UUID

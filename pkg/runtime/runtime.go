@@ -133,7 +133,6 @@ func Run(ctx context.Context, args Args) error {
 	config := wazero.NewRuntimeConfig().WithCompilationCache(args.Cache)
 	runtime := wazero.NewRuntimeWithConfig(ctx, config)
 	defer runtime.Close(ctx)
-
 	if err := args.RequestPlugin.Instanciate(ctx, runtime); err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package wasmhttp
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -14,19 +15,20 @@ import (
 
 // Server is an HTTP server that will proxy and route the request to the corresponding function.
 type Server struct {
-	server *http.Server
-	store  storage.Store
-	cache  storage.ModCacher
-	engine *actor.Engine
+	server      *http.Server
+	store       storage.Store
+	metricStore storage.MetricStore
+	cache       storage.ModCacher
+	engine      *actor.Engine
 }
 
 // NewServer return a new wasm server given a storage and a mod cache.
-func NewServer(addr string, store storage.Store, cache storage.ModCacher) *Server {
-	engine, _ := actor.NewEngine(nil)
+func NewServer(addr string, engine *actor.Engine, store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) *Server {
 	s := &Server{
-		store:  store,
-		cache:  cache,
-		engine: engine,
+		store:       store,
+		metricStore: metricStore,
+		cache:       cache,
+		engine:      engine,
 	}
 	server := &http.Server{
 		Handler: s,
@@ -66,7 +68,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// TODO: might want to render something decent?
 		w.Write([]byte("endpoint does not have an active deploy yet"))
 		return
-
 	}
 	deploy, err := s.store.GetDeploy(endpoint.ActiveDeployID)
 	if err != nil {
@@ -91,6 +92,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		RequestPlugin: reqPlugin,
 		Env:           endpoint.Environment,
 	}
+	// Trim the endpoint id from the path as the "actual" requestURL
+	requestURL := "/" + strings.Join(pathParts[1:], "/")
 
-	s.engine.Spawn(act.NewRuntime(w, args), act.KindRuntime)
+	ctx, cancel := context.WithCancel(r.Context())
+	rt := act.NewRuntime(w, args, endpointID, deploy.ID, s.metricStore, requestURL, cancel)
+	s.engine.Spawn(rt, act.KindRuntime)
+	<-ctx.Done()
 }
