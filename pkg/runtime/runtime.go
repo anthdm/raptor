@@ -155,8 +155,7 @@ func Run(ctx context.Context, args Args) error {
 		WithName("ffaas").
 		WithArgs().
 		WithStdio(fd, fd, fd).
-		// TODO: env...
-		WithEnv().
+		WithEnv(envMapToSlice(args.Env)...).
 		// TODO: we want to mount this to some virtual folder?
 		WithDirs("/").
 		WithListens().
@@ -181,4 +180,15 @@ func Run(ctx context.Context, args Args) error {
 	_, err = runtime.InstantiateModule(ctx, wasmModule, wazero.NewModuleConfig())
 
 	return err
+}
+
+func envMapToSlice(env map[string]string) []string {
+	slice := make([]string, len(env))
+	i := 0
+	for k, v := range env {
+		s := fmt.Sprintf("%s=%s", k, v)
+		slice[i] = s
+		i++
+	}
+	return slice
 }

@@ -43,29 +43,29 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
-	app, err := s.store.GetEndpoint(endpointID)
+	endpoint, err := s.store.GetEndpoint(endpointID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	if !app.HasActiveDeploy() {
+	if !endpoint.HasActiveDeploy() {
 		w.WriteHeader(http.StatusNotFound)
 		// TODO: might want to render something decent?
 		w.Write([]byte("endpoint does not have an active deploy yet"))
 		return
 
 	}
-	deploy, err := s.store.GetDeploy(app.ActiveDeployID)
+	deploy, err := s.store.GetDeploy(endpoint.ActiveDeployID)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	compCache, ok := s.cache.Get(app.ID)
+	compCache, ok := s.cache.Get(endpoint.ID)
 	if !ok {
 		compCache = wazero.NewCompilationCache()
-		s.cache.Put(app.ID, compCache)
+		s.cache.Put(endpoint.ID, compCache)
 	}
 	reqPlugin, err := runtime.NewRequestModule(r)
 	if err != nil {
@@ -78,6 +78,7 @@ func (s *Server) handleRequest(w http.ResponseWriter, r *http.Request) {
 		Blob:          deploy.Blob,
 		Cache:         compCache,
 		RequestPlugin: reqPlugin,
+		Env:           endpoint.Environment,
 	}
 	if err := runtime.Run(r.Context(), args); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

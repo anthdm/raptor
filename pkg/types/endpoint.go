@@ -11,7 +11,7 @@ type Endpoint struct {
 	Name           string            `json:"name"`
 	URL            string            `json:"url"`
 	ActiveDeployID uuid.UUID         `json:"active_deploy_id"`
-	Environment    map[string]string `json:"-"`
+	Environment    map[string]string `json:"environment"`
 	DeployHistory  []*Deploy         `json:"deploy_history"`
 	CreatedAT      time.Time         `json:"created_at"`
 }

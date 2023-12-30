@@ -9,7 +9,7 @@ import (
 )
 
 func myHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("the api key:", os.Getenv("API_KEY"))
+	fmt.Println("the env:", os.Getenv("FOO"))
 	w.Write([]byte("from tinder swiper"))
 }
 
