@@ -11,6 +11,8 @@ import (
 const defaultConfig = `
 wasmServerAddr 	= ":5000"
 apiServerAddr 	= ":3000"
+storageDriver 	= "bolt"
+storagePath 	= ".db"
 `
 
 // Config holds the global configuration which is READONLY ofcourse.
@@ -19,6 +21,8 @@ var config Config
 type Config struct {
 	APIServerAddr  string
 	WASMServerAddr string
+	StorageDriver  string
+	StoragePath    string
 }
 
 func Parse(path string) error {

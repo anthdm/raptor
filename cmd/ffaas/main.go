@@ -14,15 +14,13 @@ import (
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/anthdm/ffaas/pkg/version"
-	"github.com/anthdm/ffaas/pkg/wasmhttp"
-	"github.com/anthdm/hollywood/actor"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 )
 
 func main() {
+
 	var (
-		memstore    = storage.NewMemoryStore()
 		modCache    = storage.NewDefaultModCache()
 		metricStore = storage.NewMemoryMetricStore()
 		configFile  string
@@ -38,23 +36,26 @@ func main() {
 		log.Fatal(err)
 	}
 
+	store, err := storage.NewBoltStore(config.Get().StoragePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	if seed {
-		seedEndpoint(memstore, modCache)
+		seedEndpoint(store, modCache)
 	}
 
 	fmt.Println(banner())
 	fmt.Println("The opensource faas platform powered by WASM")
 	fmt.Println()
-	server := api.NewServer(memstore, metricStore, modCache)
-	go func() {
-		fmt.Printf("api server running\t%s\n", config.GetApiUrl())
-		log.Fatal(server.Listen(config.Get().APIServerAddr))
-	}()
+	server := api.NewServer(store, metricStore, modCache)
+	fmt.Printf("api server running\t%s\n", config.GetApiUrl())
+	log.Fatal(server.Listen(config.Get().APIServerAddr))
 
-	engine, err := actor.NewEngine(nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// engine, err := actor.NewEngine(nil)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	// eventPID := engine.SpawnFunc(func(c *actor.Context) {
 	// 	switch msg := c.Message().(type) {
@@ -67,9 +68,9 @@ func main() {
 	// }, "event")
 	// engine.Subscribe(eventPID)
 
-	wasmServer := wasmhttp.NewServer(config.Get().WASMServerAddr, engine, memstore, metricStore, modCache)
-	fmt.Printf("wasm server running\t%s\n", config.GetWasmUrl())
-	log.Fatal(wasmServer.Listen())
+	// wasmServer := wasmhttp.NewServer(config.Get().WASMServerAddr, engine, memstore, metricStore, modCache)
+	// fmt.Printf("wasm server running\t%s\n", config.GetWasmUrl())
+	// log.Fatal(wasmServer.Listen())
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {

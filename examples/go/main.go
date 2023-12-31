@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
-
-	ffaas "github.com/anthdm/ffaas/sdk"
 )
 
 func myHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,5 +12,6 @@ func myHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	ffaas.HandleFunc(myHandler)
+	fmt.Println("from the wasm guest")
+	//ffaas.HandleFunc(myHandler)
 }

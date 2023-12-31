@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/anthdm/ffaas/proto"
 	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"
 	"github.com/stealthrocket/wasi-go/imports/wasi_http"
@@ -32,30 +33,11 @@ type RequestModule struct {
 	responseBytes []byte
 }
 
-// TODO: could probably do more optimized stuff for larger bodies.
-// We want to limit the body size though...
-func NewRequestModule(r *http.Request) (*RequestModule, error) {
-	if r == nil {
-		return nil, fmt.Errorf("http.request is nil")
-	}
-	b, err := io.ReadAll(r.Body)
+func NewRequestModule(req *proto.HTTPRequest) (*RequestModule, error) {
+	b, err := msgpack.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
-	defer r.Body.Close()
-
-	req := request{
-		Body:   b,
-		Method: r.Method,
-		Header: r.Header,
-		URL:    r.URL.String(),
-	}
-
-	b, err = msgpack.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
 	return &RequestModule{
 		requestBytes: b,
 	}, nil
@@ -152,7 +134,6 @@ func Run(ctx context.Context, args Args) error {
 	//f.Seek(0, io.SeekStart)
 	// fd := int(f.Fd())
 	fd := -1
-
 	builder := imports.NewBuilder().
 		WithName("ffaas").
 		WithArgs().
