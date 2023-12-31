@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/anthdm/ffaas/pkg/config"
+	"github.com/anthdm/ffaas/pkg/cors"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/go-chi/chi/v5"
@@ -36,6 +37,8 @@ func (s *Server) Listen(addr string) error {
 
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
+	var cors = cors.NewCors(config.Get().Cors.Api.Origin, config.Get().Cors.Api.AllowedMethods, config.Get().Cors.Api.AllowedHeaders)
+	s.router.Use(cors.ApplyCORS)
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))

@@ -5,12 +5,22 @@ import (
 	"net"
 	"os"
 
+	"github.com/anthdm/ffaas/pkg/cors"
 	"github.com/pelletier/go-toml/v2"
 )
 
 const defaultConfig = `
 wasmServerAddr 	= ":5000"
 apiServerAddr 	= ":3000"
+[cors]
+[cors.api]
+origin = "https://localhost"
+allowedMethods = "GET, POST"
+allowedHeaders = "Content-Type"
+[cors.wasm]
+origin = "https://localhost"
+allowedMethods = "GET, POST"
+allowedHeaders = "Content-Type"
 `
 
 // Config holds the global configuration which is READONLY ofcourse.
@@ -19,6 +29,7 @@ var config Config
 type Config struct {
 	APIServerAddr  string
 	WASMServerAddr string
+	Cors           cors.CorsConfig
 }
 
 func Parse(path string) error {

@@ -3,6 +3,8 @@ package wasm
 import (
 	"net/http"
 
+	"github.com/anthdm/ffaas/pkg/config"
+	"github.com/anthdm/ffaas/pkg/cors"
 	"github.com/anthdm/ffaas/pkg/runtime"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/go-chi/chi/v5"
@@ -33,6 +35,8 @@ func (s *Server) Listen(addr string) error {
 }
 
 func (s *Server) initRoutes() {
+	var cors = cors.NewCors(config.Get().Cors.Wasm.Origin, config.Get().Cors.Wasm.AllowedMethods, config.Get().Cors.Wasm.AllowedHeaders)
+	s.router.Use(cors.ApplyCORS)
 	s.router.Handle("/{id}", http.HandlerFunc(s.handleRequest))
 }
 
