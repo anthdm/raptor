@@ -9,17 +9,41 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type BoltStore struct {
-	path string
-	db   *bbolt.DB
+type BoltConfig struct {
+	path     string
+	readonly bool
 }
 
-func NewBoltStore(path string) (*BoltStore, error) {
+func NewBoltConfig() BoltConfig {
+	return BoltConfig{
+		path:     ".db",
+		readonly: false,
+	}
+}
+
+func (config BoltConfig) WithPath(path string) BoltConfig {
+	config.path = path
+	return config
+}
+
+func (config BoltConfig) WithReadOnly(b bool) BoltConfig {
+	config.readonly = true
+	return config
+}
+
+type BoltStore struct {
+	config BoltConfig
+	db     *bbolt.DB
+}
+
+func NewBoltStore(config BoltConfig) (*BoltStore, error) {
 	var init bool
-	if _, err := os.Stat(path); err != nil {
+	if _, err := os.Stat(config.path); err != nil {
 		init = true
 	}
-	db, err := bbolt.Open(path, 0600, nil)
+	db, err := bbolt.Open(config.path, 0600, &bbolt.Options{
+		ReadOnly: config.readonly,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +69,8 @@ func NewBoltStore(path string) (*BoltStore, error) {
 	}
 
 	return &BoltStore{
-		db:   db,
-		path: path,
+		config: config,
+		db:     db,
 	}, nil
 }
 

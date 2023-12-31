@@ -21,7 +21,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	store, err := storage.NewBoltStore(".db")
+	cfg := storage.NewBoltConfig().
+		WithPath(config.Get().StoragePath).
+		WithReadOnly(true)
+	store, err := storage.NewBoltStore(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,14 +1,14 @@
 .PHONY: proto
 
 build:
-	@go build -o bin/ffaas cmd/ffaas/main.go 
+	@go build -o bin/api cmd/api/main.go 
+	@go build -o bin/wasmserver cmd/wasmserver/main.go 
 
-wasmserver:
-	@go build -o bin/wasmserver cmd/wasmserver/main.go
+wasmserver: build
 	@./bin/wasmserver
 
-run: build
-	@./bin/ffaas --seed
+api: build
+	@./bin/api --seed
 
 test:
 	@go test ./pkg/* -v

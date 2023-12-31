@@ -10,7 +10,6 @@ import (
 
 	"github.com/anthdm/ffaas/pkg/api"
 	"github.com/anthdm/ffaas/pkg/config"
-	"github.com/anthdm/ffaas/pkg/runtime"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/anthdm/ffaas/pkg/version"
@@ -19,7 +18,6 @@ import (
 )
 
 func main() {
-
 	var (
 		modCache    = storage.NewDefaultModCache()
 		metricStore = storage.NewMemoryMetricStore()
@@ -36,7 +34,10 @@ func main() {
 		log.Fatal(err)
 	}
 
-	store, err := storage.NewBoltStore(config.Get().StoragePath)
+	cfg := storage.NewBoltConfig().
+		WithPath(config.Get().StoragePath).
+		WithReadOnly(false)
+	store, err := storage.NewBoltStore(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,9 +94,17 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	store.CreateDeploy(deploy)
 	fmt.Printf("endpoint: %s\n", endpoint.URL)
 
-	compCache := wazero.NewCompilationCache()
-	runtime.Compile(context.Background(), compCache, deploy.Blob)
-	cache.Put(endpoint.ID, compCache)
+	// compCache := wazero.NewCompilationCache()
+	// compile(context.TODO(), compCache, deploy.Blob)
+	// fmt.Printf("%+v\n", compCache)
+	// cache.Put(endpoint.ID, compCache)
+}
+
+func compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) {
+	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
+	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+	defer runtime.Close(ctx)
+	runtime.CompileModule(ctx, blob)
 }
 
 func banner() string {
