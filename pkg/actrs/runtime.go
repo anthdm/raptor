@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/proto"
@@ -46,7 +47,13 @@ func (r *Runtime) Receive(c *actor.Context) {
 		}
 		cache := wazero.NewCompilationCache()
 		r.exec(context.TODO(), deploy.Blob, cache, endpoint.Environment)
-		c.Respond(&proto.HTTPResponse{Response: []byte("hello")})
+		resp := &proto.HTTPResponse{
+			Response:   []byte("hello"),
+			RequestID:  msg.ID,
+			StatusCode: http.StatusOK,
+		}
+		c.Respond(resp)
+		c.Engine().Poison(c.PID())
 	}
 }
 
