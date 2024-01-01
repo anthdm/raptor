@@ -15,16 +15,18 @@ import (
 
 // Server serves the public ffaas API.
 type Server struct {
-	router *chi.Mux
-	store  storage.Store
-	cache  storage.ModCacher
+	router      *chi.Mux
+	store       storage.Store
+	metricStore storage.MetricStore
+	cache       storage.ModCacher
 }
 
 // NewServer returns a new server given a Store interface.
-func NewServer(store storage.Store, cache storage.ModCacher) *Server {
+func NewServer(store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) *Server {
 	return &Server{
-		store: store,
-		cache: cache,
+		store:       store,
+		cache:       cache,
+		metricStore: metricStore,
 	}
 }
 
@@ -38,6 +40,7 @@ func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
+	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deploy", makeAPIHandler(s.handleCreateDeploy))
 	s.router.Post("/endpoint/{id}/rollback", makeAPIHandler(s.handleCreateRollback))
@@ -170,4 +173,16 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 	s.cache.Delete(currentDeployID)
 
 	return writeJSON(w, http.StatusOK, map[string]any{"deploy": deploy.ID})
+}
+
+func (s *Server) handleGetEndpointMetrics(w http.ResponseWriter, r *http.Request) error {
+	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	metrics, err := s.metricStore.GetRuntimeMetrics(endpointID)
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, metrics)
 }

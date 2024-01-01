@@ -1,0 +1,17 @@
+syntax = "proto3";
+package proto;
+option go_package = "github.com/anthdm/ffaas/proto";
+
+message HTTPRequest {
+	bytes Body = 1;
+	string Method = 2;
+	string URL = 3;
+	string EndpointID = 4;
+	string ID = 5;
+} 
+
+message HTTPResponse {
+	bytes response = 1;
+	int32 statusCode = 2;
+	string RequestID = 3;
+}

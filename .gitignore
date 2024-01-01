@@ -1,2 +1,4 @@
 bin
-ffaas.toml
+config.toml
+.db
+.modcache

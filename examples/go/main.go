@@ -2,15 +2,15 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
-	"os"
 
 	ffaas "github.com/anthdm/ffaas/sdk"
 )
 
 func myHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("the env:", os.Getenv("FOO"))
-	w.Write([]byte("from tinder swiper"))
+	num := rand.Intn(100)
+	w.Write([]byte(fmt.Sprintf("my first hailstorm app: %d", num)))
 }
 
 func main() {

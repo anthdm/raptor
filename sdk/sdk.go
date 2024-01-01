@@ -18,6 +18,7 @@ var (
 type request struct {
 	Body   []byte
 	Method string
+	Header http.Header
 	URL    string
 }
 
@@ -44,14 +45,14 @@ func HandleFunc(h http.HandlerFunc) {
 
 	var req request
 	if err := msgpack.Unmarshal(requestBuffer, &req); err != nil {
-		// todo
+		// TODO: how are we handling errors coming from the guest?
 		os.Exit(1)
 	}
 
-	// execute the handler of the caller
 	w := &ResponseWriter{}
 	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
-	h(w, r)
+	r.Header = req.Header
+	h(w, r) // execute the user's handler
 
 	responseBuffer = w.buffer.Bytes()
 	ptr = &responseBuffer[0]
