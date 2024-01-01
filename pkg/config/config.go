@@ -12,8 +12,7 @@ const defaultConfig = `
 wasmClusterAddr		= "localhost:6666"
 wasmServerAddr 		= "localhost:5000"
 apiServerAddr 		= "localhost:3000"
-storageDriver 		= "bolt"
-bolStoragePath 		= ".db"
+storageDriver 		= "redis"
 `
 
 // Config holds the global configuration which is READONLY.
@@ -23,7 +22,6 @@ type Config struct {
 	APIServerAddr   string
 	WASMServerAddr  string
 	StorageDriver   string
-	BoltStoragePath string
 	WASMClusterAddr string
 }
 

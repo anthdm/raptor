@@ -33,11 +33,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cfg := storage.NewBoltConfig().
-		WithPath(config.Get().BoltStoragePath).
-		WithReadOnly(false)
-	store, err := storage.NewBoltStore(cfg)
+	store, err := storage.NewRedisStore()
 	if err != nil {
+		err := fmt.Errorf("failed to connect with Redis: %s", err)
 		log.Fatal(err)
 	}
 

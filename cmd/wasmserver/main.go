@@ -27,10 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cfg := storage.NewBoltConfig().
-		WithPath(config.Get().BoltStoragePath).
-		WithReadOnly(true)
-	store, err := storage.NewBoltStore(cfg)
+	store, err := storage.NewRedisStore()
 	if err != nil {
 		log.Fatal(err)
 	}
