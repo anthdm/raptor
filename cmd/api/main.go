@@ -25,7 +25,7 @@ func main() {
 		seed        bool
 	)
 	flagSet := flag.NewFlagSet("ffaas", flag.ExitOnError)
-	flagSet.StringVar(&configFile, "config", "ffaas.toml", "")
+	flagSet.StringVar(&configFile, "config", "config.toml", "")
 	flagSet.BoolVar(&seed, "seed", false, "")
 	flagSet.Parse(os.Args[1:])
 
@@ -35,7 +35,7 @@ func main() {
 	}
 
 	cfg := storage.NewBoltConfig().
-		WithPath(config.Get().StoragePath).
+		WithPath(config.Get().BoltStoragePath).
 		WithReadOnly(false)
 	store, err := storage.NewBoltStore(cfg)
 	if err != nil {
@@ -52,26 +52,6 @@ func main() {
 	server := api.NewServer(store, metricStore, modCache)
 	fmt.Printf("api server running\t%s\n", config.GetApiUrl())
 	log.Fatal(server.Listen(config.Get().APIServerAddr))
-
-	// engine, err := actor.NewEngine(nil)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// eventPID := engine.SpawnFunc(func(c *actor.Context) {
-	// 	switch msg := c.Message().(type) {
-	// 	case actor.ActorInitializedEvent:
-	// 		if strings.Contains(msg.PID.String(), "runtime") {
-	// 			fmt.Println("got this", msg.PID)
-	// 			engine.Stop(msg.PID)
-	// 		}
-	// 	}
-	// }, "event")
-	// engine.Subscribe(eventPID)
-
-	// wasmServer := wasmhttp.NewServer(config.Get().WASMServerAddr, engine, memstore, metricStore, modCache)
-	// fmt.Printf("wasm server running\t%s\n", config.GetWasmUrl())
-	// log.Fatal(wasmServer.Listen())
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {
@@ -94,10 +74,12 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	store.CreateDeploy(deploy)
 	fmt.Printf("endpoint: %s\n", endpoint.URL)
 
-	// compCache := wazero.NewCompilationCache()
-	// compile(context.TODO(), compCache, deploy.Blob)
-	// fmt.Printf("%+v\n", compCache)
-	// cache.Put(endpoint.ID, compCache)
+	modCache, err := wazero.NewCompilationCacheWithDir(".modcache")
+	if err != nil {
+		log.Fatal(err)
+	}
+	compile(context.TODO(), modCache, deploy.Blob)
+	cache.Put(endpoint.ID, modCache)
 }
 
 func compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) {

@@ -23,12 +23,14 @@ const KindRuntime = "runtime"
 // Runtime is an actor that can execute compiled WASM blobs in a distributed cluster.
 type Runtime struct {
 	store storage.Store
+	cache storage.ModCacher
 }
 
-func NewRuntime(store storage.Store) actor.Producer {
+func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		return &Runtime{
 			store: store,
+			cache: cache,
 		}
 	}
 }
@@ -48,9 +50,13 @@ func (r *Runtime) Receive(c *actor.Context) {
 			slog.Warn("runtime could not find the endpoint's active deploy from store", "err", err)
 			return
 		}
-		cache := wazero.NewCompilationCache()
 		httpmod, _ := NewRequestModule(msg)
-		r.exec(context.TODO(), deploy.Blob, cache, endpoint.Environment, httpmod)
+		modcache, ok := r.cache.Get(endpoint.ID)
+		if !ok {
+			modcache = wazero.NewCompilationCache()
+			slog.Warn("no cache hit", "endpoint", endpoint.ID)
+		}
+		r.exec(context.TODO(), deploy.Blob, modcache, endpoint.Environment, httpmod)
 		resp := &proto.HTTPResponse{
 			Response:   httpmod.responseBytes,
 			RequestID:  msg.ID,
@@ -58,6 +64,7 @@ func (r *Runtime) Receive(c *actor.Context) {
 		}
 		c.Respond(resp)
 		c.Engine().Poison(c.PID())
+		r.cache.Put(endpoint.ID, modcache)
 	}
 }
 

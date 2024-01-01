@@ -9,26 +9,28 @@ import (
 )
 
 const defaultConfig = `
-wasmServerAddr 	= ":5000"
-apiServerAddr 	= ":3000"
-storageDriver 	= "bolt"
-storagePath 	= ".db"
+wasmClusterAddr		= "localhost:6666"
+wasmServerAddr 		= "localhost:5000"
+apiServerAddr 		= "localhost:3000"
+storageDriver 		= "bolt"
+bolStoragePath 		= ".db"
 `
 
-// Config holds the global configuration which is READONLY ofcourse.
+// Config holds the global configuration which is READONLY.
 var config Config
 
 type Config struct {
-	APIServerAddr  string
-	WASMServerAddr string
-	StorageDriver  string
-	StoragePath    string
+	APIServerAddr   string
+	WASMServerAddr  string
+	StorageDriver   string
+	BoltStoragePath string
+	WASMClusterAddr string
 }
 
 func Parse(path string) error {
 	_, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		if err := os.WriteFile("ffaas.toml", []byte(defaultConfig), os.ModePerm); err != nil {
+		if err := os.WriteFile("config.toml", []byte(defaultConfig), os.ModePerm); err != nil {
 			return err
 		}
 	}
@@ -51,14 +53,12 @@ func makeURL(address string) string {
 		host = address
 		port = ""
 	}
-
 	if host == "" {
 		host = "0.0.0.0"
 	}
 	if port == "" || port == "http" {
 		port = "80"
 	}
-
 	return "http://" + net.JoinHostPort(host, port)
 }
 

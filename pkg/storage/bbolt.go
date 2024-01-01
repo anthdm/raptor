@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"github.com/anthdm/ffaas/pkg/types"
@@ -27,7 +29,7 @@ func (config BoltConfig) WithPath(path string) BoltConfig {
 }
 
 func (config BoltConfig) WithReadOnly(b bool) BoltConfig {
-	config.readonly = true
+	config.readonly = b
 	return config
 }
 
@@ -38,7 +40,8 @@ type BoltStore struct {
 
 func NewBoltStore(config BoltConfig) (*BoltStore, error) {
 	var init bool
-	if _, err := os.Stat(config.path); err != nil {
+	_, err := os.Stat(config.path)
+	if errors.Is(err, os.ErrNotExist) {
 		init = true
 	}
 	db, err := bbolt.Open(config.path, 0600, &bbolt.Options{
@@ -48,7 +51,7 @@ func NewBoltStore(config BoltConfig) (*BoltStore, error) {
 		return nil, err
 	}
 
-	if init {
+	if init && !config.readonly {
 		tx, err := db.Begin(true)
 		if err != nil {
 			return nil, err
@@ -77,6 +80,9 @@ func NewBoltStore(config BoltConfig) (*BoltStore, error) {
 func (s *BoltStore) CreateEndpoint(e *types.Endpoint) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte("endpoint"))
+		if bucket == nil {
+			return fmt.Errorf("could not find bucket: %s", "endpoint")
+		}
 		b, err := msgpack.Marshal(e)
 		if err != nil {
 			return err

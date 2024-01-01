@@ -16,13 +16,13 @@ import (
 )
 
 func main() {
-	err := config.Parse("ffaas.toml")
+	err := config.Parse("config.toml")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	cfg := storage.NewBoltConfig().
-		WithPath(config.Get().StoragePath).
+		WithPath(config.Get().BoltStoragePath).
 		WithReadOnly(true)
 	store, err := storage.NewBoltStore(cfg)
 	if err != nil {
@@ -33,20 +33,21 @@ func main() {
 		metricStore = storage.NewMemoryMetricStore()
 	)
 
-	remote := remote.New("localhost:6666", nil)
+	remote := remote.New(config.Get().WASMClusterAddr, nil)
 	engine, err := actor.NewEngine(&actor.EngineConfig{
 		Remote: remote,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
+	// TODO: Get these values from the config.
 	c, err := cluster.New(cluster.Config{
 		Region:          "f",
 		Engine:          engine,
 		ID:              "member1",
 		ClusterProvider: cluster.NewSelfManagedProvider(),
 	})
-	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store), &cluster.KindConfig{})
+	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, modCache), &cluster.KindConfig{})
 	c.Start()
 
 	server := actrs.NewWasmServer(config.Get().WASMServerAddr, c, store, metricStore, modCache)
