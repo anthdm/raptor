@@ -5,17 +5,26 @@ import (
 	"net"
 	"os"
 
+	"github.com/anthdm/run/pkg/cors"
 	"github.com/pelletier/go-toml/v2"
 )
 
-const defaultConfig = `
-wasmClusterAddr		= "localhost:6666"
+const defaultConfig = `wasmClusterAddr		= "localhost:6666"
 wasmServerAddr 		= "localhost:5000"
 apiServerAddr 		= "localhost:3000"
 storageDriver 		= "redis"
 apiToken 			= ""
 authorization		= false
-`
+
+[cors]
+[cors.api]
+origin = "https://localhost"
+allowedMethods = "GET, POST"
+allowedHeaders = "Content-Type"
+[cors.wasm]
+origin = "https://localhost"
+allowedMethods = "GET, POST"
+allowedHeaders = "Content-Type"`
 
 // Config holds the global configuration which is READONLY.
 var config Config
@@ -27,6 +36,7 @@ type Config struct {
 	WASMClusterAddr string
 	APIToken        string
 	Authorization   bool
+	Cors            cors.CorsConfig
 }
 
 func Parse(path string) error {

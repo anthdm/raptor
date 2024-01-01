@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/anthdm/run/pkg/config"
+	"github.com/anthdm/run/pkg/cors"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
 	"github.com/go-chi/chi/v5"
@@ -42,6 +43,8 @@ func (s *Server) initRouter() {
 	if config.Get().Authorization {
 		s.router.Use(s.withAPIToken)
 	}
+	var cors = cors.NewCors(config.Get().Cors.Api.Origin, config.Get().Cors.Api.AllowedMethods, config.Get().Cors.Api.AllowedHeaders)
+	s.router.Use(cors.ApplyCORS)
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
 	s.router.Get("/endpoint", makeAPIHandler(s.handleGetEndpoints))
