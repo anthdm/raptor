@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/anthdm/ffaas/pkg/config"
+	"github.com/anthdm/ffaas/pkg/cors"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/proto"
 	"github.com/anthdm/hollywood/actor"
@@ -30,6 +32,7 @@ func newRequestWithResponse(request *proto.HTTPRequest) requestWithResponse {
 // WasmServer is an HTTP server that will proxy and route the request to the corresponding function.
 type WasmServer struct {
 	server      *http.Server
+	cors        *cors.Cors
 	self        *actor.PID
 	store       storage.Store
 	metricStore storage.MetricStore
@@ -47,6 +50,7 @@ func NewWasmServer(addr string, cluster *cluster.Cluster, store storage.Store, m
 			cache:       cache,
 			cluster:     cluster,
 			responses:   make(map[string]chan *proto.HTTPResponse),
+			cors:        cors.NewCors(config.Get().Cors.Wasm.Origin, config.Get().Cors.Wasm.AllowedMethods, config.Get().Cors.Wasm.AllowedHeaders),
 		}
 		server := &http.Server{
 			Handler: s,
@@ -86,6 +90,9 @@ func (s *WasmServer) sendRequestToRuntime(req *proto.HTTPRequest) {
 }
 
 func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", s.cors.Origin)
+	w.Header().Set("Access-Control-Allow-Methods", s.cors.AllowedHeaders)
+	w.Header().Set("Access-Control-Allow-Headers", s.cors.Methods)
 	path := strings.TrimPrefix(r.URL.Path, "/")
 	pathParts := strings.Split(path, "/")
 	if len(pathParts) == 0 {
