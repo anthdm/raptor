@@ -35,7 +35,6 @@ func main() {
 
 	store, err := storage.NewRedisStore()
 	if err != nil {
-		err := fmt.Errorf("failed to connect with Redis: %s", err)
 		log.Fatal(err)
 	}
 

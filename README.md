@@ -1,8 +1,8 @@
-# FFAAS
+# Hailstorm
+The distribute application runner powered by WASM.
 
-Fast functions as a service platform powered by WASM.
-
-coming soon...
+# Installation
+Documentation on how to run Hailstorm yourself is coming soon.
 
 ## API Server Endpoints
 

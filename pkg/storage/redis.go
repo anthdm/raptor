@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/google/uuid"
@@ -16,9 +17,13 @@ type RedisStore struct {
 func NewRedisStore() (*RedisStore, error) {
 	client := redis.NewClient(&redis.Options{})
 	err := client.Ping(context.Background()).Err()
+	if err != nil {
+		err = fmt.Errorf("failed to connect to the Redis server: %s", err)
+		return nil, err
+	}
 	return &RedisStore{
 		client: client,
-	}, err
+	}, nil
 }
 
 func (s *RedisStore) CreateEndpoint(endpoint *types.Endpoint) error {
