@@ -10,7 +10,7 @@ import (
 
 func myHandler(w http.ResponseWriter, r *http.Request) {
 	num := rand.Intn(100)
-	w.Write([]byte(fmt.Sprintf("from my application: %d", num)))
+	w.Write([]byte(fmt.Sprintf("my first hailstorm app: %d", num)))
 }
 
 func main() {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -16,7 +17,12 @@ import (
 )
 
 func main() {
-	err := config.Parse("config.toml")
+	var configFile string
+	flagSet := flag.NewFlagSet("ffaas", flag.ExitOnError)
+	flagSet.StringVar(&configFile, "config", "config.toml", "")
+	flagSet.Parse(os.Args[1:])
+
+	err := config.Parse(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}

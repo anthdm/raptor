@@ -12,7 +12,6 @@ import (
 	"github.com/anthdm/ffaas/pkg/config"
 	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/ffaas/pkg/types"
-	"github.com/anthdm/ffaas/pkg/version"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 )
@@ -46,9 +45,6 @@ func main() {
 		seedEndpoint(store, modCache)
 	}
 
-	fmt.Println(banner())
-	fmt.Println("The opensource faas platform powered by WASM")
-	fmt.Println()
 	server := api.NewServer(store, metricStore, modCache)
 	fmt.Printf("api server running\t%s\n", config.GetApiUrl())
 	log.Fatal(server.Listen(config.Get().APIServerAddr))
@@ -72,14 +68,7 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	endpoint.DeployHistory = append(endpoint.DeployHistory, deploy)
 	store.CreateEndpoint(endpoint)
 	store.CreateDeploy(deploy)
-	fmt.Printf("endpoint: %s\n", endpoint.URL)
-
-	modCache, err := wazero.NewCompilationCacheWithDir(".modcache")
-	if err != nil {
-		log.Fatal(err)
-	}
-	compile(context.TODO(), modCache, deploy.Blob)
-	cache.Put(endpoint.ID, modCache)
+	fmt.Printf("endpoint seeded: %s\n", endpoint.URL)
 }
 
 func compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) {
@@ -87,15 +76,4 @@ func compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) {
 	runtime := wazero.NewRuntimeWithConfig(ctx, config)
 	defer runtime.Close(ctx)
 	runtime.CompileModule(ctx, blob)
-}
-
-func banner() string {
-	return fmt.Sprintf(`
-  __  __                
- / _|/ _|               
-| |_| |_ __ _  __ _ ___ 
-|  _|  _/ _  |/ _  / __|
-| | | || (_| | (_| \__ \
-|_| |_| \__,_|\__,_|___/ V%s
-	`, version.Version)
 }
