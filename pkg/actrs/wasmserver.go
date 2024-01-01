@@ -4,6 +4,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/anthdm/ffaas/pkg/storage"
@@ -131,11 +132,17 @@ func makeProtoRequest(r *http.Request) (*proto.HTTPRequest, error) {
 		ID:     uuid.NewString(),
 		Body:   b,
 		Method: r.Method,
-		URL:    r.URL.String(),
+		URL:    trimmedEndpointFromURL(r.URL),
 	}, nil
 }
 
 func writeResponse(w http.ResponseWriter, code int, b []byte) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Write(b)
+}
+
+func trimmedEndpointFromURL(url *url.URL) string {
+	path := strings.TrimPrefix(url.Path, "/")
+	pathParts := strings.Split(path, "/")
+	return "/" + strings.Join(pathParts[1:], "/")
 }

@@ -34,7 +34,7 @@ func writeRequest(ptr uint32)
 //go:noescape
 func writeResponse(ptr uint32, size uint32)
 
-func HandleFunc(h http.HandlerFunc) {
+func Handle(h http.Handler) {
 	requestSize := malloc()
 	requestBuffer = make([]byte, requestSize)
 
@@ -52,7 +52,7 @@ func HandleFunc(h http.HandlerFunc) {
 	w := &ResponseWriter{}
 	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
 	r.Header = req.Header
-	h(w, r) // execute the user's handler
+	h.ServeHTTP(w, r) // execute the user's handler
 
 	responseBuffer = w.buffer.Bytes()
 	ptr = &responseBuffer[0]

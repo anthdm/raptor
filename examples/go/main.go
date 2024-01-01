@@ -6,13 +6,24 @@ import (
 	"net/http"
 
 	ffaas "github.com/anthdm/ffaas/sdk"
+	"github.com/go-chi/chi"
 )
 
-func myHandler(w http.ResponseWriter, r *http.Request) {
+func handleHome(w http.ResponseWriter, r *http.Request) {
 	num := rand.Intn(100)
-	w.Write([]byte(fmt.Sprintf("my first hailstorm app: %d", num)))
+	fmt.Println(r.URL)
+	w.Write([]byte(fmt.Sprintf("from / => %d", num)))
+}
+
+func handleLogin(w http.ResponseWriter, r *http.Request) {
+	num := rand.Intn(100)
+	fmt.Println(r.URL)
+	w.Write([]byte(fmt.Sprintf("from /login => %d", num)))
 }
 
 func main() {
-	ffaas.HandleFunc(myHandler)
+	router := chi.NewMux()
+	router.Get("/", handleHome)
+	router.Get("/login", handleLogin)
+	ffaas.Handle(router)
 }
