@@ -2,12 +2,13 @@ package ffaas
 
 import (
 	"bytes"
+	"log"
 	"net/http"
-	"os"
 	"unsafe"
 
+	"github.com/anthdm/ffaas/proto"
 	_ "github.com/stealthrocket/net/http"
-	"github.com/vmihailenco/msgpack/v5"
+	prot "google.golang.org/protobuf/proto"
 )
 
 var (
@@ -43,22 +44,27 @@ func Handle(h http.Handler) {
 
 	writeRequest(unsafePtr)
 
-	var req request
-	if err := msgpack.Unmarshal(requestBuffer, &req); err != nil {
-		// TODO: how are we handling errors coming from the guest?
-		os.Exit(1)
+	var req proto.HTTPRequest
+	if err := prot.Unmarshal(requestBuffer, &req); err != nil {
+		log.Fatal(err)
 	}
 
 	w := &ResponseWriter{}
 	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
-	r.Header = req.Header
+	for k, v := range req.Header {
+		r.Header[k] = v.Fields
+	}
 	h.ServeHTTP(w, r) // execute the user's handler
 
-	responseBuffer = w.buffer.Bytes()
+	if w.buffer.Len() > 0 {
+		responseBuffer = w.buffer.Bytes()
+	} else {
+		responseBuffer = []byte("Hailstorm application. Coming soon...")
+	}
+
 	ptr = &responseBuffer[0]
 	unsafePtr = uint32(uintptr(unsafe.Pointer(ptr)))
-
-	writeResponse(unsafePtr, uint32(w.buffer.Len()))
+	writeResponse(unsafePtr, uint32(len(responseBuffer)))
 }
 
 type ResponseWriter struct {

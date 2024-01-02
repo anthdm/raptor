@@ -108,11 +108,14 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, http.StatusNotFound, []byte("endpoint does not have an active deploy yet"))
 		return
 	}
-	req, err := makeProtoRequest(r)
+	requestID := uuid.NewString()
+	r.Header.Set("x-request-id", requestID)
+	req, err := makeProtoRequest(requestID, r)
 	if err != nil {
 		writeResponse(w, http.StatusInternalServerError, []byte(err.Error()))
 		return
 	}
+
 	req.EndpointID = endpointID.String()
 	reqres := newRequestWithResponse(req)
 
@@ -123,13 +126,14 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp.Response)
 }
 
-func makeProtoRequest(r *http.Request) (*proto.HTTPRequest, error) {
+func makeProtoRequest(id string, r *http.Request) (*proto.HTTPRequest, error) {
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, err
 	}
 	return &proto.HTTPRequest{
-		ID:     uuid.NewString(),
+		Header: makeProtoHeader(r.Header),
+		ID:     id,
 		Body:   b,
 		Method: r.Method,
 		URL:    trimmedEndpointFromURL(r.URL),
@@ -144,5 +148,18 @@ func writeResponse(w http.ResponseWriter, code int, b []byte) {
 func trimmedEndpointFromURL(url *url.URL) string {
 	path := strings.TrimPrefix(url.Path, "/")
 	pathParts := strings.Split(path, "/")
+	if len(pathParts) == 0 {
+		return "/"
+	}
 	return "/" + strings.Join(pathParts[1:], "/")
+}
+
+func makeProtoHeader(header http.Header) map[string]*proto.HeaderFields {
+	m := make(map[string]*proto.HeaderFields, len(header))
+	for k, v := range header {
+		m[k] = &proto.HeaderFields{
+			Fields: v,
+		}
+	}
+	return m
 }

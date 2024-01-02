@@ -15,7 +15,8 @@ import (
 	"github.com/stealthrocket/wasi-go/imports"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
-	"github.com/vmihailenco/msgpack/v5"
+
+	prot "google.golang.org/protobuf/proto"
 )
 
 const KindRuntime = "runtime"
@@ -126,7 +127,7 @@ type RequestModule struct {
 }
 
 func NewRequestModule(req *proto.HTTPRequest) (*RequestModule, error) {
-	b, err := msgpack.Marshal(req)
+	b, err := prot.Marshal(req)
 	if err != nil {
 		return nil, err
 	}

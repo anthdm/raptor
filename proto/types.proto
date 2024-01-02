@@ -8,7 +8,12 @@ message HTTPRequest {
 	string URL = 3;
 	string EndpointID = 4;
 	string ID = 5;
+	map<string, HeaderFields> Header = 6;
 } 
+
+message HeaderFields {
+	repeated string fields = 1;
+}
 
 message HTTPResponse {
 	bytes response = 1;
