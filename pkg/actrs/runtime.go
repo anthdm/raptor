@@ -6,8 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/anthdm/ffaas/pkg/storage"
+	"github.com/anthdm/ffaas/pkg/types"
 	"github.com/anthdm/ffaas/proto"
 	"github.com/anthdm/hollywood/actor"
 	"github.com/google/uuid"
@@ -23,15 +25,18 @@ const KindRuntime = "runtime"
 
 // Runtime is an actor that can execute compiled WASM blobs in a distributed cluster.
 type Runtime struct {
-	store storage.Store
-	cache storage.ModCacher
+	store       storage.Store
+	metricStore storage.MetricStore
+	cache       storage.ModCacher
+	started     time.Time
 }
 
-func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
+func NewRuntime(store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		return &Runtime{
-			store: store,
-			cache: cache,
+			store:       store,
+			metricStore: metricStore,
+			cache:       cache,
 		}
 	}
 }
@@ -39,6 +44,7 @@ func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
 func (r *Runtime) Receive(c *actor.Context) {
 	switch msg := c.Message().(type) {
 	case actor.Started:
+		r.started = time.Now()
 	case actor.Stopped:
 	case *proto.HTTPRequest:
 		endpoint, err := r.store.GetEndpoint(uuid.MustParse(msg.EndpointID))
@@ -65,6 +71,18 @@ func (r *Runtime) Receive(c *actor.Context) {
 		}
 		c.Respond(resp)
 		c.Engine().Poison(c.PID())
+
+		metric := types.RuntimeMetric{
+			ID:         uuid.New(),
+			StartTime:  r.started,
+			Duration:   time.Since(r.started),
+			DeployID:   deploy.ID,
+			EndpointID: deploy.EndpointID,
+			RequestURL: msg.URL,
+		}
+		if err := r.metricStore.CreateRuntimeMetric(&metric); err != nil {
+			slog.Warn("failed to create runtime metric", "err", err)
+		}
 		r.cache.Put(endpoint.ID, modcache)
 	}
 }

@@ -84,3 +84,21 @@ func (s *RedisStore) CreateDeploy(deploy *types.Deploy) error {
 	}
 	return s.client.Set(context.Background(), deploy.ID.String(), b, 0).Err()
 }
+
+func (s *RedisStore) CreateRuntimeMetric(metric *types.RuntimeMetric) error {
+	b, err := msgpack.Marshal(metric)
+	if err != nil {
+		return err
+	}
+	return s.client.Set(context.Background(), metric.ID.String(), b, 0).Err()
+}
+
+func (s *RedisStore) GetRuntimeMetrics(id uuid.UUID) ([]types.RuntimeMetric, error) {
+	var metrics []types.RuntimeMetric
+	b, err := s.client.Get(context.Background(), id.String()).Bytes()
+	if err != nil {
+		return nil, err
+	}
+	err = msgpack.Unmarshal(b, &metrics)
+	return metrics, err
+}

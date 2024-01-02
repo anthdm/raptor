@@ -33,7 +33,7 @@ func main() {
 	}
 	var (
 		modCache    = storage.NewDefaultModCache()
-		metricStore = storage.NewMemoryMetricStore()
+		metricStore = store
 	)
 
 	remote := remote.New(config.Get().WASMClusterAddr, nil)
@@ -50,7 +50,7 @@ func main() {
 		ID:              "member1",
 		ClusterProvider: cluster.NewSelfManagedProvider(),
 	})
-	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, modCache), &cluster.KindConfig{})
+	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, metricStore, modCache), &cluster.KindConfig{})
 	c.Start()
 
 	server := actrs.NewWasmServer(config.Get().WASMServerAddr, c, store, metricStore, modCache)

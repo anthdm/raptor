@@ -18,10 +18,9 @@ import (
 
 func main() {
 	var (
-		modCache    = storage.NewDefaultModCache()
-		metricStore = storage.NewMemoryMetricStore()
-		configFile  string
-		seed        bool
+		modCache   = storage.NewDefaultModCache()
+		configFile string
+		seed       bool
 	)
 	flagSet := flag.NewFlagSet("ffaas", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
@@ -42,7 +41,7 @@ func main() {
 		seedEndpoint(store, modCache)
 	}
 
-	server := api.NewServer(store, metricStore, modCache)
+	server := api.NewServer(store, store, modCache)
 	fmt.Printf("api server running\t%s\n", config.GetApiUrl())
 	log.Fatal(server.Listen(config.Get().APIServerAddr))
 }
