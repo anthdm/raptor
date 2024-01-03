@@ -1,8 +1,8 @@
-# Hailstorm
-The distribute application runner powered by WASM.
+# Run
+Run your applications in a distributed cloud on the edge.
 
 # Installation
-Documentation on how to run Hailstorm yourself is coming soon.
+Documentation on how to use Run yourself is coming soon.
 
 ## API Server Endpoints
 
