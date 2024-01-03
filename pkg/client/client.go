@@ -68,6 +68,9 @@ func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoin
 func (c *Client) CreateDeploy(endpointID uuid.UUID, blob io.Reader, params api.CreateDeployParams) (*types.Deploy, error) {
 	url := fmt.Sprintf("%s/endpoint/%s/deploy", c.config.url, endpointID)
 	req, err := http.NewRequest("POST", url, blob)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Add("Content-Type", "application/octet-stream")
 	resp, err := c.Do(req)
 	if err != nil {
@@ -81,4 +84,23 @@ func (c *Client) CreateDeploy(endpointID uuid.UUID, blob io.Reader, params api.C
 		return nil, err
 	}
 	return &deploy, nil
+}
+
+func (c *Client) ListEndpoints() ([]types.Endpoint, error) {
+	url := fmt.Sprintf("%s/endpoint", c.config.url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	var endpoints []types.Endpoint
+	if err := json.NewDecoder(resp.Body).Decode(&endpoints); err != nil {
+		return nil, err
+	}
+
+	return endpoints, nil
 }

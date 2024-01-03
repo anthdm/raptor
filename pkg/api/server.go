@@ -40,6 +40,7 @@ func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
+	s.router.Get("/endpoint", makeAPIHandler(s.handleGetEndpoints))
 	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deploy", makeAPIHandler(s.handleCreateDeploy))
@@ -133,6 +134,14 @@ func (s *Server) handleGetEndpoint(w http.ResponseWriter, r *http.Request) error
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, endpoint)
+}
+
+func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) error {
+	endpoints, err := s.store.GetEndpoints()
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, endpoints)
 }
 
 // CreateRollbackParams holds all the necessary fields to rollback your application

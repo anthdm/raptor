@@ -30,6 +30,7 @@ deploy			Deploy an app to the cloud [deploy <endpointID path/to/app.wasm>]
 help			Show usage
 
 `)
+	os.Exit(0)
 }
 
 type stringList []string
@@ -64,7 +65,6 @@ func main() {
 	args := flagset.Args()
 	if len(args) == 0 {
 		printUsage()
-		return
 	}
 
 	c := client.New(client.NewConfig().WithURL(config.GetApiUrl()))
@@ -74,7 +74,17 @@ func main() {
 
 	switch args[0] {
 	case "endpoint":
-		command.handleCreateEndpoint(args[1:])
+		if len(args) < 2 {
+			printUsage()
+		}
+		switch args[1] {
+		case "create":
+			command.handleCreateEndpoint(args)
+		case "list":
+			command.handleListEndpoints(args)
+		default:
+			printUsage()
+		}
 	case "deploy":
 		command.handleDeploy(args[1:])
 	case "help":
@@ -88,13 +98,24 @@ type command struct {
 	client *client.Client
 }
 
+func (c command) handleListEndpoints(args []string) {
+	endpoints, err := c.client.ListEndpoints()
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	b, err := json.MarshalIndent(endpoints, "", "    ")
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	fmt.Println(string(b))
+}
+
 func (c command) handleCreateEndpoint(args []string) {
-	if len(args) != 1 {
+	if len(args) != 3 {
 		printUsage()
-		return
 	}
 	params := api.CreateEndpointParams{
-		Name:        args[0],
+		Name:        args[2],
 		Environment: makeEnvMap(env),
 	}
 	endpoint, err := c.client.CreateEndpoint(params)

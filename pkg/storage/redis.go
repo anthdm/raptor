@@ -10,10 +10,14 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
+// RedisStore is the Redis implementation of a Storage interface.
 type RedisStore struct {
 	client *redis.Client
 }
 
+// NewRedisStore returns a new RedisStore.
+//
+// This will return an error if we failed to ping the Redis server.
 func NewRedisStore() (*RedisStore, error) {
 	client := redis.NewClient(&redis.Options{})
 	err := client.Ping(context.Background()).Err()
@@ -31,17 +35,45 @@ func (s *RedisStore) CreateEndpoint(endpoint *types.Endpoint) error {
 	if err != nil {
 		return err
 	}
-	return s.client.Set(context.Background(), endpoint.ID.String(), b, 0).Err()
+	key := makeKey("endpoint", endpoint.ID)
+	return s.client.Set(context.Background(), key, b, 0).Err()
 }
 
 func (s *RedisStore) GetEndpoint(id uuid.UUID) (*types.Endpoint, error) {
+	key := makeKey("endpoint", id)
+	return s.getEndpoint(key)
+}
+
+func (s *RedisStore) getEndpoint(id string) (*types.Endpoint, error) {
 	var endpoint types.Endpoint
-	b, err := s.client.Get(context.Background(), id.String()).Bytes()
+	b, err := s.client.Get(context.Background(), id).Bytes()
 	if err != nil {
 		return nil, err
 	}
 	err = msgpack.Unmarshal(b, &endpoint)
 	return &endpoint, err
+}
+
+func (s *RedisStore) GetEndpoints() ([]types.Endpoint, error) {
+	var (
+		cursor  uint64
+		pattern = "endpoint_*"
+	)
+	keys, cursor, err := s.client.Scan(context.Background(), cursor, pattern, 0).Result()
+	if err != nil {
+		return []types.Endpoint{}, err
+	}
+
+	endpoints := make([]types.Endpoint, len(keys))
+	for i, key := range keys {
+		endpoint, err := s.getEndpoint(key)
+		if err != nil {
+			return nil, err
+		}
+		endpoints[i] = *endpoint
+	}
+
+	return endpoints, nil
 }
 
 func (s *RedisStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) error {
@@ -64,7 +96,8 @@ func (s *RedisStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) e
 	if err != nil {
 		return err
 	}
-	return s.client.Set(context.Background(), endpoint.ID.String(), b, 0).Err()
+	key := makeKey("endpoint", endpoint.ID)
+	return s.client.Set(context.Background(), key, b, 0).Err()
 }
 
 func (s *RedisStore) GetDeploy(id uuid.UUID) (*types.Deploy, error) {
@@ -101,4 +134,8 @@ func (s *RedisStore) GetRuntimeMetrics(id uuid.UUID) ([]types.RuntimeMetric, err
 	}
 	err = msgpack.Unmarshal(b, &metrics)
 	return metrics, err
+}
+
+func makeKey(prefix string, id uuid.UUID) string {
+	return fmt.Sprintf("%s_%s", prefix, id)
 }
