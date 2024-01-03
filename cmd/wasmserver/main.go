@@ -8,17 +8,17 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/anthdm/ffaas/pkg/actrs"
-	"github.com/anthdm/ffaas/pkg/config"
-	"github.com/anthdm/ffaas/pkg/storage"
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
 	"github.com/anthdm/hollywood/remote"
+	"github.com/anthdm/run/pkg/actrs"
+	"github.com/anthdm/run/pkg/config"
+	"github.com/anthdm/run/pkg/storage"
 )
 
 func main() {
 	var configFile string
-	flagSet := flag.NewFlagSet("ffaas", flag.ExitOnError)
+	flagSet := flag.NewFlagSet("run", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
 	flagSet.Parse(os.Args[1:])
 

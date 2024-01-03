@@ -1,6 +1,6 @@
 syntax = "proto3";
 package proto;
-option go_package = "github.com/anthdm/ffaas/proto";
+option go_package = "github.com/anthdm/run/proto";
 
 message HTTPRequest {
 	bytes Body = 1;

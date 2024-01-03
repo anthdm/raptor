@@ -6,14 +6,14 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/anthdm/ffaas/pkg/config"
-	"github.com/anthdm/ffaas/pkg/storage"
-	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/run/pkg/config"
+	"github.com/anthdm/run/pkg/storage"
+	"github.com/anthdm/run/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-// Server serves the public ffaas API.
+// Server serves the public run API.
 type Server struct {
 	router      *chi.Mux
 	store       storage.Store
@@ -56,7 +56,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(status)
 }
 
-// CreateEndpointParams holds all the necessary fields to create a new ffaas application.
+// CreateEndpointParams holds all the necessary fields to create a new run application.
 type CreateEndpointParams struct {
 	Name        string            `json:"name"`
 	Environment map[string]string `json:"environment"`

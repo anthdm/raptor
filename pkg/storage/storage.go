@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/run/pkg/types"
 	"github.com/google/uuid"
 )
 

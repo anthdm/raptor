@@ -1,4 +1,4 @@
-package ffaas
+package run
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"unsafe"
 
-	"github.com/anthdm/ffaas/proto"
+	"github.com/anthdm/run/proto"
 	_ "github.com/stealthrocket/net/http"
 	prot "google.golang.org/protobuf/proto"
 )

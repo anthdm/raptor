@@ -7,10 +7,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/anthdm/ffaas/pkg/storage"
-	"github.com/anthdm/ffaas/proto"
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
+	"github.com/anthdm/run/pkg/storage"
+	"github.com/anthdm/run/proto"
 	"github.com/google/uuid"
 )
 

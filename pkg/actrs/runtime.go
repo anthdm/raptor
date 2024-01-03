@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/anthdm/ffaas/pkg/storage"
-	"github.com/anthdm/ffaas/pkg/types"
-	"github.com/anthdm/ffaas/proto"
 	"github.com/anthdm/hollywood/actor"
+	"github.com/anthdm/run/pkg/storage"
+	"github.com/anthdm/run/pkg/types"
+	"github.com/anthdm/run/proto"
 	"github.com/google/uuid"
 	"github.com/stealthrocket/wasi-go"
 	"github.com/stealthrocket/wasi-go/imports"

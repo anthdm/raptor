@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anthdm/ffaas/pkg/api"
-	"github.com/anthdm/ffaas/pkg/client"
-	"github.com/anthdm/ffaas/pkg/config"
+	"github.com/anthdm/run/pkg/api"
+	"github.com/anthdm/run/pkg/client"
+	"github.com/anthdm/run/pkg/config"
 	"github.com/google/uuid"
 )
 

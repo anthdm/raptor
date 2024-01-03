@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/anthdm/ffaas/pkg/api"
-	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/run/pkg/api"
+	"github.com/anthdm/run/pkg/types"
 	"github.com/google/uuid"
 )
 
