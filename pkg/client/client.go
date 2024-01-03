@@ -40,6 +40,32 @@ func New(config Config) *Client {
 	}
 }
 
+func (c *Client) RollbackEndpoint(endpointID uuid.UUID, params api.CreateRollbackParams) (*api.CreateRollbackResponse, error) {
+	b, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+	url := fmt.Sprintf("%s/endpoint/%s/rollback", c.config.url, endpointID)
+	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("api responded with a non 200 status code: %d", resp.StatusCode)
+	}
+	var rollbackResponse api.CreateRollbackResponse
+	if err := json.NewDecoder(resp.Body).Decode(&rollbackResponse); err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+	return &rollbackResponse, nil
+}
+
 func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoint, error) {
 	b, err := json.Marshal(params)
 	if err != nil {
@@ -47,10 +73,10 @@ func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoin
 	}
 	url := fmt.Sprintf("%s/%s", c.config.url, "endpoint")
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
-	req.Header.Add("Content-Type", "application/json")
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Add("Content-Type", "application/json")
 	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
@@ -62,6 +88,7 @@ func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoin
 	if err := json.NewDecoder(resp.Body).Decode(&endpoint); err != nil {
 		return nil, err
 	}
+	resp.Body.Close()
 	return &endpoint, nil
 }
 
@@ -83,6 +110,7 @@ func (c *Client) CreateDeploy(endpointID uuid.UUID, blob io.Reader, params api.C
 	if err := json.NewDecoder(resp.Body).Decode(&deploy); err != nil {
 		return nil, err
 	}
+	resp.Body.Close()
 	return &deploy, nil
 }
 
@@ -101,6 +129,6 @@ func (c *Client) ListEndpoints() ([]types.Endpoint, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&endpoints); err != nil {
 		return nil, err
 	}
-
+	resp.Body.Close()
 	return endpoints, nil
 }

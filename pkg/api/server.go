@@ -150,6 +150,10 @@ type CreateRollbackParams struct {
 	DeployID uuid.UUID `json:"deploy_id"`
 }
 
+type CreateRollbackResponse struct {
+	DeployID uuid.UUID `json:"deploy_id"`
+}
+
 func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) error {
 	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
@@ -167,6 +171,11 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
+	if currentDeployID.String() == params.DeployID.String() {
+		err := fmt.Errorf("deploy %s already active", params.DeployID)
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+
 	deploy, err := s.store.GetDeploy(params.DeployID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
@@ -174,6 +183,7 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 
 	updateParams := storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
+		Deploys:        []*types.Deploy{deploy},
 	}
 	if err := s.store.UpdateEndpoint(endpointID, updateParams); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
@@ -181,7 +191,8 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 
 	s.cache.Delete(currentDeployID)
 
-	return writeJSON(w, http.StatusOK, map[string]any{"deploy": deploy.ID})
+	resp := CreateRollbackResponse{DeployID: deploy.ID}
+	return writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleGetEndpointMetrics(w http.ResponseWriter, r *http.Request) error {

@@ -16,7 +16,7 @@ import (
 
 func printUsage() {
 	fmt.Printf(`
-Usage: hailstorm [OPTIONS] COMMAND
+Usage: run [OPTIONS] COMMAND
 
 Run any application in the cloud and on the edge
 
@@ -26,6 +26,11 @@ Options:
 
 Commands:
 endpoint		Create a new endpoint [options... endpoint "myendpoint"]
+
+Subcommands:
+create 			Create a new endpoint [options... endpoint create "myendpoint"]
+list			List current endpoints
+
 deploy			Deploy an app to the cloud [deploy <endpointID path/to/app.wasm>]
 help			Show usage
 
@@ -78,6 +83,8 @@ func main() {
 			printUsage()
 		}
 		switch args[1] {
+		case "rollback":
+			command.handleRollback(args)
 		case "create":
 			command.handleCreateEndpoint(args)
 		case "list":
@@ -96,6 +103,31 @@ func main() {
 
 type command struct {
 	client *client.Client
+}
+
+// endpoint rollback <endpointID> <deployID>
+func (c command) handleRollback(args []string) {
+	if len(args) != 4 {
+		printUsage()
+	}
+	endpointID, err := uuid.Parse(args[2])
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	deployID, err := uuid.Parse(args[3])
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	params := api.CreateRollbackParams{DeployID: deployID}
+	resp, err := c.client.RollbackEndpoint(endpointID, params)
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	b, err := json.MarshalIndent(resp, "", "    ")
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	fmt.Println(string(b))
 }
 
 func (c command) handleListEndpoints(args []string) {
@@ -132,7 +164,6 @@ func (c command) handleCreateEndpoint(args []string) {
 func (c command) handleDeploy(args []string) {
 	if len(args) != 2 {
 		printUsage()
-		return
 	}
 	id, err := uuid.Parse(args[0])
 	if err != nil {
