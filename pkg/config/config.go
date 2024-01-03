@@ -23,6 +23,7 @@ type Config struct {
 	WASMServerAddr  string
 	StorageDriver   string
 	WASMClusterAddr string
+	APIToken        string
 }
 
 func Parse(path string) error {

@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +39,7 @@ func (s *Server) Listen(addr string) error {
 
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
+	s.router.Use(s.withAPIToken)
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
 	s.router.Get("/endpoint", makeAPIHandler(s.handleGetEndpoints))
@@ -205,4 +207,22 @@ func (s *Server) handleGetEndpointMetrics(w http.ResponseWriter, r *http.Request
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, metrics)
+}
+
+var errUnauthorized = errors.New("unauthorized")
+
+func (s *Server) withAPIToken(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if len(authHeader) < 10 {
+			writeJSON(w, http.StatusUnauthorized, ErrorResponse(errUnauthorized))
+			return
+		}
+		apiToken := authHeader[7:]
+		if apiToken != config.Get().APIToken {
+			writeJSON(w, http.StatusUnauthorized, ErrorResponse(errUnauthorized))
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
 }
