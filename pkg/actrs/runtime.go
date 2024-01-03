@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/anthdm/ffaas/pkg/storage"
@@ -97,10 +98,11 @@ func (r *Runtime) exec(ctx context.Context, blob []byte, cache wazero.Compilatio
 		slog.Warn("compiling module failed", "err", err)
 		return
 	}
-	fd := -1
+	fd := -1 // TODO: for capturing logs..
+	requestLen := strconv.Itoa(len(httpmod.requestBytes))
 	builder := imports.NewBuilder().
-		WithName("ffaas").
-		WithArgs().
+		WithName("run").
+		WithArgs(requestLen).
 		WithStdio(fd, fd, fd).
 		WithEnv(envMapToSlice(env)...).
 		// TODO: we want to mount this to some virtual folder?
@@ -115,16 +117,16 @@ func (r *Runtime) exec(ctx context.Context, blob []byte, cache wazero.Compilatio
 	var system wasi.System
 	ctx, system, err = builder.Instantiate(ctx, runtime)
 	if err != nil {
-		slog.Warn("failed to instanciate wasi module", "err", err)
+		slog.Warn("failed to instantiate wasi module", "err", err)
 		return
 	}
 	defer system.Close(ctx)
 
-	httpmod.Instanciate(ctx, runtime)
+	httpmod.Instantiate(ctx, runtime)
 
 	_, err = runtime.InstantiateModule(ctx, mod, wazero.NewModuleConfig())
 	if err != nil {
-		slog.Warn("failed to instanciate guest module", "err", err)
+		slog.Warn("failed to instantiate guest module", "err", err)
 	}
 }
 
@@ -158,11 +160,8 @@ func (r *RequestModule) WriteResponse(w io.Writer) (int, error) {
 	return w.Write(r.responseBytes)
 }
 
-func (r *RequestModule) Instanciate(ctx context.Context, runtime wazero.Runtime) error {
+func (r *RequestModule) Instantiate(ctx context.Context, runtime wazero.Runtime) error {
 	_, err := runtime.NewHostModuleBuilder("env").
-		NewFunctionBuilder().
-		WithGoModuleFunction(r.moduleMalloc(), []wapi.ValueType{}, []wapi.ValueType{wapi.ValueTypeI32}).
-		Export("malloc").
 		NewFunctionBuilder().
 		WithGoModuleFunction(r.moduleWriteRequest(), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
 		Export("write_request").
@@ -177,13 +176,6 @@ func (r *RequestModule) Close(ctx context.Context) error {
 	r.responseBytes = nil
 	r.requestBytes = nil
 	return nil
-}
-
-func (r *RequestModule) moduleMalloc() wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		size := uint64(len(r.requestBytes))
-		stack[0] = uint64(wapi.DecodeU32(size))
-	}
 }
 
 func (r *RequestModule) moduleWriteRequest() wapi.GoModuleFunc {

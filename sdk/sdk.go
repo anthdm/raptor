@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"unsafe"
 
 	"github.com/anthdm/ffaas/proto"
@@ -23,10 +25,6 @@ type request struct {
 	URL    string
 }
 
-//go:wasmimport env malloc
-//go:noescape
-func malloc() uint32
-
 //go:wasmimport env write_request
 //go:noescape
 func writeRequest(ptr uint32)
@@ -36,7 +34,12 @@ func writeRequest(ptr uint32)
 func writeResponse(ptr uint32, size uint32)
 
 func Handle(h http.Handler) {
-	requestSize := malloc()
+	// the spec makes sure the size of the incoming request is passed as args
+	// to skip invocations. [run, len]
+	requestSize, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
 	requestBuffer = make([]byte, requestSize)
 
 	ptr := &requestBuffer[0]
