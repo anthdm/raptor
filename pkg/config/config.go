@@ -13,6 +13,8 @@ wasmClusterAddr		= "localhost:6666"
 wasmServerAddr 		= "localhost:5000"
 apiServerAddr 		= "localhost:3000"
 storageDriver 		= "redis"
+apiToken 			= ""
+authorization		= false
 `
 
 // Config holds the global configuration which is READONLY.
@@ -24,6 +26,7 @@ type Config struct {
 	StorageDriver   string
 	WASMClusterAddr string
 	APIToken        string
+	Authorization   bool
 }
 
 func Parse(path string) error {

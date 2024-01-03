@@ -39,7 +39,9 @@ func (s *Server) Listen(addr string) error {
 
 func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
-	s.router.Use(s.withAPIToken)
+	if config.Get().Authorization {
+		s.router.Use(s.withAPIToken)
+	}
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
 	s.router.Get("/endpoint", makeAPIHandler(s.handleGetEndpoints))
