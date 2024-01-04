@@ -1,8 +1,8 @@
-# Hailstorm
-The distribute application runner powered by WASM.
+# Run
+Run your applications in a distributed cloud on the edge.
 
 # Installation
-Documentation on how to run Hailstorm yourself is coming soon.
+Documentation on how to use Run yourself is coming soon.
 
 ## API Server Endpoints
 
@@ -39,7 +39,7 @@ Example Response:
 ```json
 {
   "id": "09248ef6-c401-4601-8928-5964d61f2c61",
-  "name": "My first ffaas app",
+  "name": "My first run app",
   "url": "http://0.0.0.0:4000/09248ef6-c401-4601-8928-5964d61f2c61",
   "active_deploy_id": "aeacab67-91d6-45c1-ae29-f27922b0fcf0",
   "deploy_history": [

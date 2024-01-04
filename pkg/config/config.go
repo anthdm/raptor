@@ -5,7 +5,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/anthdm/ffaas/pkg/cors"
+	"github.com/anthdm/run/pkg/cors"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -21,7 +21,9 @@ allowedHeaders = "Content-Type"
 [cors.wasm]
 origin = "https://localhost"
 allowedMethods = "GET, POST"
-allowedHeaders = "Content-Type"`
+allowedHeaders = "Content-Type"apiToken 			= ""
+authorization		= false
+`
 
 // Config holds the global configuration which is READONLY.
 var config Config
@@ -32,6 +34,8 @@ type Config struct {
 	StorageDriver   string
 	WASMClusterAddr string
 	Cors            cors.CorsConfig
+	APIToken        string
+	Authorization   bool
 }
 
 func Parse(path string) error {

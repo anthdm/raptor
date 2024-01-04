@@ -2,19 +2,20 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/anthdm/ffaas/pkg/config"
-	"github.com/anthdm/ffaas/pkg/cors"
-	"github.com/anthdm/ffaas/pkg/storage"
-	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/run/pkg/config"
+	"github.com/anthdm/run/pkg/cors"
+	"github.com/anthdm/run/pkg/storage"
+	"github.com/anthdm/run/pkg/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
-// Server serves the public ffaas API.
+// Server serves the public run API.
 type Server struct {
 	router      *chi.Mux
 	store       storage.Store
@@ -41,8 +42,12 @@ func (s *Server) initRouter() {
 	s.router = chi.NewRouter()
 	var cors = cors.NewCors(config.Get().Cors.Api.Origin, config.Get().Cors.Api.AllowedMethods, config.Get().Cors.Api.AllowedHeaders)
 	s.router.Use(cors.ApplyCORS)
+	if config.Get().Authorization {
+		s.router.Use(s.withAPIToken)
+	}
 	s.router.Get("/status", handleStatus)
 	s.router.Get("/endpoint/{id}", makeAPIHandler(s.handleGetEndpoint))
+	s.router.Get("/endpoint", makeAPIHandler(s.handleGetEndpoints))
 	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deploy", makeAPIHandler(s.handleCreateDeploy))
@@ -58,7 +63,7 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(status)
 }
 
-// CreateEndpointParams holds all the necessary fields to create a new ffaas application.
+// CreateEndpointParams holds all the necessary fields to create a new run application.
 type CreateEndpointParams struct {
 	Name        string            `json:"name"`
 	Environment map[string]string `json:"environment"`
@@ -138,9 +143,21 @@ func (s *Server) handleGetEndpoint(w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, http.StatusOK, endpoint)
 }
 
+func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) error {
+	endpoints, err := s.store.GetEndpoints()
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, endpoints)
+}
+
 // CreateRollbackParams holds all the necessary fields to rollback your application
 // to a specific deploy id (version).
 type CreateRollbackParams struct {
+	DeployID uuid.UUID `json:"deploy_id"`
+}
+
+type CreateRollbackResponse struct {
 	DeployID uuid.UUID `json:"deploy_id"`
 }
 
@@ -161,6 +178,11 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
+	if currentDeployID.String() == params.DeployID.String() {
+		err := fmt.Errorf("deploy %s already active", params.DeployID)
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+
 	deploy, err := s.store.GetDeploy(params.DeployID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
@@ -168,6 +190,7 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 
 	updateParams := storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
+		Deploys:        []*types.Deploy{deploy},
 	}
 	if err := s.store.UpdateEndpoint(endpointID, updateParams); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
@@ -175,7 +198,8 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 
 	s.cache.Delete(currentDeployID)
 
-	return writeJSON(w, http.StatusOK, map[string]any{"deploy": deploy.ID})
+	resp := CreateRollbackResponse{DeployID: deploy.ID}
+	return writeJSON(w, http.StatusOK, resp)
 }
 
 func (s *Server) handleGetEndpointMetrics(w http.ResponseWriter, r *http.Request) error {
@@ -188,4 +212,22 @@ func (s *Server) handleGetEndpointMetrics(w http.ResponseWriter, r *http.Request
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, metrics)
+}
+
+var errUnauthorized = errors.New("unauthorized")
+
+func (s *Server) withAPIToken(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		authHeader := r.Header.Get("Authorization")
+		if len(authHeader) < 10 {
+			writeJSON(w, http.StatusUnauthorized, ErrorResponse(errUnauthorized))
+			return
+		}
+		apiToken := authHeader[7:]
+		if apiToken != config.Get().APIToken {
+			writeJSON(w, http.StatusUnauthorized, ErrorResponse(errUnauthorized))
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
 }

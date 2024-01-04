@@ -1,3 +1,1 @@
-echo "building go application with tinygo..."
-tinygo build -o examples/go/app.wasm --no-debug -target wasi examples/go/main.go
-echo "done!"
+GOOS=wasip1 GOARCH=wasm go build -o examples/go/app.wasm examples/go/main.go 

@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/run/pkg/types"
 	"github.com/google/uuid"
 )
 
@@ -9,6 +9,7 @@ type Store interface {
 	CreateEndpoint(*types.Endpoint) error
 	UpdateEndpoint(uuid.UUID, UpdateEndpointParams) error
 	GetEndpoint(uuid.UUID) (*types.Endpoint, error)
+	GetEndpoints() ([]types.Endpoint, error)
 	CreateDeploy(*types.Deploy) error
 	GetDeploy(uuid.UUID) (*types.Deploy, error)
 }

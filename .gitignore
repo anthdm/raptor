@@ -2,3 +2,4 @@ bin
 config.toml
 .db
 .modcache
+*.wasm

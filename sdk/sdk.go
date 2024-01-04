@@ -1,13 +1,16 @@
-package ffaas
+package run
 
 import (
 	"bytes"
+	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"unsafe"
 
+	"github.com/anthdm/run/proto"
 	_ "github.com/stealthrocket/net/http"
-	"github.com/vmihailenco/msgpack/v5"
+	prot "google.golang.org/protobuf/proto"
 )
 
 var (
@@ -22,10 +25,6 @@ type request struct {
 	URL    string
 }
 
-//go:wasmimport env malloc
-//go:noescape
-func malloc() uint32
-
 //go:wasmimport env write_request
 //go:noescape
 func writeRequest(ptr uint32)
@@ -34,8 +33,13 @@ func writeRequest(ptr uint32)
 //go:noescape
 func writeResponse(ptr uint32, size uint32)
 
-func HandleFunc(h http.HandlerFunc) {
-	requestSize := malloc()
+func Handle(h http.Handler) {
+	// the spec makes sure the size of the incoming request is passed as args
+	// to skip invocations. [run, len]
+	requestSize, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		log.Fatal(err)
+	}
 	requestBuffer = make([]byte, requestSize)
 
 	ptr := &requestBuffer[0]
@@ -43,22 +47,27 @@ func HandleFunc(h http.HandlerFunc) {
 
 	writeRequest(unsafePtr)
 
-	var req request
-	if err := msgpack.Unmarshal(requestBuffer, &req); err != nil {
-		// TODO: how are we handling errors coming from the guest?
-		os.Exit(1)
+	var req proto.HTTPRequest
+	if err := prot.Unmarshal(requestBuffer, &req); err != nil {
+		log.Fatal(err)
 	}
 
 	w := &ResponseWriter{}
 	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
-	r.Header = req.Header
-	h(w, r) // execute the user's handler
+	for k, v := range req.Header {
+		r.Header[k] = v.Fields
+	}
+	h.ServeHTTP(w, r) // execute the user's handler
 
-	responseBuffer = w.buffer.Bytes()
+	if w.buffer.Len() > 0 {
+		responseBuffer = w.buffer.Bytes()
+	} else {
+		responseBuffer = []byte("Hailstorm application. Coming soon...")
+	}
+
 	ptr = &responseBuffer[0]
 	unsafePtr = uint32(uintptr(unsafe.Pointer(ptr)))
-
-	writeResponse(unsafePtr, uint32(w.buffer.Len()))
+	writeResponse(unsafePtr, uint32(len(responseBuffer)))
 }
 
 type ResponseWriter struct {

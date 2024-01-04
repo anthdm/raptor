@@ -8,22 +8,21 @@ import (
 	"os"
 	"time"
 
-	"github.com/anthdm/ffaas/pkg/api"
-	"github.com/anthdm/ffaas/pkg/config"
-	"github.com/anthdm/ffaas/pkg/storage"
-	"github.com/anthdm/ffaas/pkg/types"
+	"github.com/anthdm/run/pkg/api"
+	"github.com/anthdm/run/pkg/config"
+	"github.com/anthdm/run/pkg/storage"
+	"github.com/anthdm/run/pkg/types"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 )
 
 func main() {
 	var (
-		modCache    = storage.NewDefaultModCache()
-		metricStore = storage.NewMemoryMetricStore()
-		configFile  string
-		seed        bool
+		modCache   = storage.NewDefaultModCache()
+		configFile string
+		seed       bool
 	)
-	flagSet := flag.NewFlagSet("ffaas", flag.ExitOnError)
+	flagSet := flag.NewFlagSet("run", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
 	flagSet.BoolVar(&seed, "seed", false, "")
 	flagSet.Parse(os.Args[1:])
@@ -42,7 +41,7 @@ func main() {
 		seedEndpoint(store, modCache)
 	}
 
-	server := api.NewServer(store, metricStore, modCache)
+	server := api.NewServer(store, store, modCache)
 	fmt.Printf("api server running\t%s\n", config.GetApiUrl())
 	log.Fatal(server.Listen(config.Get().APIServerAddr))
 }
