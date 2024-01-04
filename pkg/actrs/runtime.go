@@ -71,7 +71,6 @@ func (r *Runtime) Receive(c *actor.Context) {
 		case "js":
 			buffer := &bytes.Buffer{}
 			r.invokeJSRuntime(context.TODO(), deploy.Blob, buffer, msg.Env)
-			// fmt.Println(buffer.String())
 			c.Respond(&proto.HTTPResponse{
 				Response:   buffer.Bytes(),
 				StatusCode: http.StatusOK,
