@@ -1,15 +1,19 @@
 package actrs
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
+	"github.com/anthdm/run/pkg/spidermonkey"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
 	"github.com/anthdm/run/proto"
@@ -18,6 +22,7 @@ import (
 	"github.com/stealthrocket/wasi-go/imports"
 	"github.com/tetratelabs/wazero"
 	wapi "github.com/tetratelabs/wazero/api"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 
 	prot "google.golang.org/protobuf/proto"
 )
@@ -30,6 +35,7 @@ type Runtime struct {
 	metricStore storage.MetricStore
 	cache       storage.ModCacher
 	started     time.Time
+	endpointID  uuid.UUID
 }
 
 func NewRuntime(store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) actor.Producer {
@@ -48,31 +54,54 @@ func (r *Runtime) Receive(c *actor.Context) {
 		r.started = time.Now()
 	case actor.Stopped:
 	case *proto.HTTPRequest:
-		endpoint, err := r.store.GetEndpoint(uuid.MustParse(msg.EndpointID))
+		r.endpointID = uuid.MustParse(msg.ActiveDeployID)
+		deploy, err := r.store.GetDeploy(r.endpointID)
 		if err != nil {
-			slog.Warn("runtime could not find endpoint from store", "err", err)
-			return
-		}
-		deploy, err := r.store.GetDeploy(endpoint.ActiveDeployID)
-		if err != nil {
+			// NOTE: Make sure we always respond to the message with an HTTPResponse or the
+			// the request will never be completed.
 			slog.Warn("runtime could not find the endpoint's active deploy from store", "err", err)
+			c.Respond(&proto.HTTPResponse{
+				Response:   []byte("internal server error"),
+				StatusCode: http.StatusInternalServerError,
+				RequestID:  msg.ID,
+			})
 			return
 		}
-		httpmod, _ := NewRequestModule(msg)
-		modcache, ok := r.cache.Get(endpoint.ID)
-		if !ok {
-			modcache = wazero.NewCompilationCache()
-			slog.Warn("no cache hit", "endpoint", endpoint.ID)
+		switch msg.Runtime {
+		case "js":
+			buffer := &bytes.Buffer{}
+			r.invokeJSRuntime(context.TODO(), deploy.Blob, buffer, msg.Env)
+			// fmt.Println(buffer.String())
+			c.Respond(&proto.HTTPResponse{
+				Response:   buffer.Bytes(),
+				StatusCode: http.StatusOK,
+				RequestID:  msg.ID,
+			})
+			buffer = nil
+		case "go":
+			httpmod, _ := NewRequestModule(msg)
+			modcache, ok := r.cache.Get(deploy.EndpointID)
+			if !ok {
+				modcache = wazero.NewCompilationCache()
+				slog.Warn("no cache hit", "endpoint", deploy.EndpointID)
+			}
+			r.invokeGORuntime(context.TODO(), deploy.Blob, modcache, msg.Env, httpmod)
+			resp := &proto.HTTPResponse{
+				Response:   httpmod.responseBytes,
+				RequestID:  msg.ID,
+				StatusCode: http.StatusOK,
+			}
+			c.Respond(resp)
+		default:
+			slog.Warn("invalid runtime", "runtime", msg.Runtime)
+			c.Respond(&proto.HTTPResponse{
+				Response:   []byte("internal server error"),
+				StatusCode: http.StatusInternalServerError,
+				RequestID:  msg.ID,
+			})
 		}
-		r.exec(context.TODO(), deploy.Blob, modcache, endpoint.Environment, httpmod)
-		resp := &proto.HTTPResponse{
-			Response:   httpmod.responseBytes,
-			RequestID:  msg.ID,
-			StatusCode: http.StatusOK,
-		}
-		c.Respond(resp)
-		c.Engine().Poison(c.PID())
 
+		c.Engine().Poison(c.PID())
 		metric := types.RuntimeMetric{
 			ID:         uuid.New(),
 			StartTime:  r.started,
@@ -84,11 +113,41 @@ func (r *Runtime) Receive(c *actor.Context) {
 		if err := r.metricStore.CreateRuntimeMetric(&metric); err != nil {
 			slog.Warn("failed to create runtime metric", "err", err)
 		}
-		r.cache.Put(endpoint.ID, modcache)
 	}
 }
 
-func (r *Runtime) exec(ctx context.Context, blob []byte, cache wazero.CompilationCache, env map[string]string, httpmod *RequestModule) {
+func (r *Runtime) invokeJSRuntime(ctx context.Context, blob []byte, buffer io.Writer, env map[string]string) {
+	modcache, ok := r.cache.Get(r.endpointID)
+	if !ok {
+		modcache = wazero.NewCompilationCache()
+		slog.Warn("no cache hit", "endpoint", r.endpointID)
+		r.cache.Put(r.endpointID, modcache)
+	}
+	config := wazero.NewRuntimeConfig().WithCompilationCache(modcache)
+	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+	defer runtime.Close(ctx)
+
+	mod, err := runtime.CompileModule(ctx, spidermonkey.WasmBlob)
+	if err != nil {
+		panic(err)
+	}
+
+	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
+	modConfig := wazero.NewModuleConfig().
+		WithStdin(os.Stdin).
+		WithStdout(buffer).
+		WithArgs("", "-e", string(blob))
+	_, err = runtime.InstantiateModule(ctx, mod, modConfig)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (r *Runtime) invokeGORuntime(ctx context.Context,
+	blob []byte,
+	cache wazero.CompilationCache,
+	env map[string]string,
+	httpmod *RequestModule) {
 	config := wazero.NewRuntimeConfig().WithCompilationCache(cache)
 	runtime := wazero.NewRuntimeWithConfig(ctx, config)
 	defer runtime.Close(ctx)

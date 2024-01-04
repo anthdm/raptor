@@ -3,7 +3,7 @@
 build:
 	@go build -o bin/api cmd/api/main.go 
 	@go build -o bin/wasmserver cmd/wasmserver/main.go 
-	@go build -o bin/hailstorm cmd/cli/main.go 
+	@go build -o bin/run cmd/cli/main.go 
 
 wasmserver: build
 	@./bin/wasmserver
@@ -20,7 +20,10 @@ proto:
 clean:
 	@rm -rf bin/api
 	@rm -rf bin/wasmserver
-	@rm -rf bin/hailstorm
+	@rm -rf bin/run
 
 goex:
 	GOOS=wasip1 GOARCH=wasm go build -o examples/go/app.wasm examples/go/main.go 
+
+jsex:
+	javy compile examples/js/index.js -o examples/js/index.wasm

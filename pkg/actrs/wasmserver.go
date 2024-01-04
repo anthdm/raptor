@@ -115,8 +115,11 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, http.StatusInternalServerError, []byte(err.Error()))
 		return
 	}
-
+	req.Runtime = endpoint.Runtime
 	req.EndpointID = endpointID.String()
+	req.ActiveDeployID = endpoint.ActiveDeployID.String()
+	req.Env = endpoint.Environment
+
 	reqres := newRequestWithResponse(req)
 
 	s.cluster.Engine().Send(s.self, reqres)

@@ -47,12 +47,13 @@ func main() {
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {
-	b, err := os.ReadFile("examples/go/app.wasm")
+	b, err := os.ReadFile("examples/js/index.js")
 	if err != nil {
 		log.Fatal(err)
 	}
 	endpoint := &types.Endpoint{
 		ID:          uuid.MustParse("09248ef6-c401-4601-8928-5964d61f2c61"),
+		Runtime:     "js",
 		Name:        "Catfact parser",
 		Environment: map[string]string{"FOO": "bar"},
 		CreatedAT:   time.Now(),

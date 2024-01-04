@@ -62,7 +62,11 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 
 // CreateEndpointParams holds all the necessary fields to create a new run application.
 type CreateEndpointParams struct {
-	Name        string            `json:"name"`
+	// Name of the endpoint
+	Name string `json:"name"`
+	// Runtime on which the code will be invoked. (go or js for now)
+	Runtime string `json:"runtime"`
+	// A map of environment variables
 	Environment map[string]string `json:"environment"`
 }
 
@@ -73,6 +77,9 @@ func (p CreateEndpointParams) validate() error {
 	}
 	if len(p.Name) > maxlen {
 		return fmt.Errorf("endpoint name can be maximum %d characters long", maxlen)
+	}
+	if _, ok := types.Runtimes[p.Runtime]; !ok {
+		return fmt.Errorf("invalid runtime given: %s", p.Runtime)
 	}
 	return nil
 }
@@ -88,7 +95,7 @@ func (s *Server) handleCreateEndpoint(w http.ResponseWriter, r *http.Request) er
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	endpoint := types.NewEndpoint(params.Name, params.Environment)
+	endpoint := types.NewEndpoint(params.Name, params.Runtime, params.Environment)
 	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
 	if err := s.store.CreateEndpoint(endpoint); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
