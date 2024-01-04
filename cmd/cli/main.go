@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/anthdm/run/pkg/api"
 	"github.com/anthdm/run/pkg/client"
 	"github.com/anthdm/run/pkg/config"
 	"github.com/anthdm/run/pkg/types"
+	"github.com/anthdm/run/pkg/util"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
@@ -212,7 +212,7 @@ func (c command) handleDeploy(args []string) {
 func (c command) handleRunEndpoint(args []string) {
 	ctx := context.Background()
 	config := wazero.NewRuntimeConfig()
-	runtime := wazero.NewRuntimeWithConfig(ctx, config)
+	runt := wazero.NewRuntimeWithConfig(ctx, config)
 
 	b, err := os.ReadFile("js.wasm")
 	if err != nil {
@@ -223,12 +223,12 @@ func (c command) handleRunEndpoint(args []string) {
 		printErrorAndExit(err)
 	}
 
-	mod, err := runtime.CompileModule(ctx, b)
+	mod, err := runt.CompileModule(ctx, b)
 	if err != nil {
 		printErrorAndExit(err)
 	}
 
-	wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
+	wasi_snapshot_preview1.MustInstantiate(ctx, runt)
 
 	http.ListenAndServe(":3000", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/favicon.ico" {
@@ -240,17 +240,18 @@ func (c command) handleRunEndpoint(args []string) {
 			WithStdin(os.Stdin).
 			WithStderr(os.Stderr).
 			WithArgs("", "-e", string(jsb))
-		_, err = runtime.InstantiateModule(ctx, mod, modConfig)
+		_, err = runt.InstantiateModule(ctx, mod, modConfig)
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		lines := strings.Split(out.String(), "\n")
-		last := lines[len(lines)-2]
-		parts := strings.Split(last, "|")
-		status, _ := strconv.Atoi(parts[1])
+		resp, status, err := util.ParseRuntimeHTTPResponse(out.String())
+		if err != nil {
+			w.Write([]byte(err.Error()))
+			return
+		}
 		w.WriteHeader(status)
-		w.Write([]byte(parts[0]))
+		w.Write([]byte(resp))
 	}))
 }
 

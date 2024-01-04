@@ -16,6 +16,7 @@ import (
 	"github.com/anthdm/run/pkg/spidermonkey"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
+	"github.com/anthdm/run/pkg/util"
 	"github.com/anthdm/run/proto"
 	"github.com/google/uuid"
 	"github.com/stealthrocket/wasi-go"
@@ -71,9 +72,19 @@ func (r *Runtime) Receive(c *actor.Context) {
 		case "js":
 			buffer := &bytes.Buffer{}
 			r.invokeJSRuntime(context.TODO(), deploy.Blob, buffer, msg.Env)
+			resp, status, err := util.ParseRuntimeHTTPResponse(buffer.String())
+			if err != nil {
+				slog.Warn("runtime could not find the endpoint's active deploy from store", "err", err)
+				c.Respond(&proto.HTTPResponse{
+					Response:   []byte("internal server error"),
+					StatusCode: http.StatusInternalServerError,
+					RequestID:  msg.ID,
+				})
+				return
+			}
 			c.Respond(&proto.HTTPResponse{
-				Response:   buffer.Bytes(),
-				StatusCode: http.StatusOK,
+				Response:   []byte(resp),
+				StatusCode: int32(status),
 				RequestID:  msg.ID,
 			})
 			buffer = nil
@@ -142,6 +153,11 @@ func (r *Runtime) invokeJSRuntime(ctx context.Context, blob []byte, buffer io.Wr
 	}
 }
 
+// TODO: Just like invoking the JS runtime, we should experiment with
+// using stdin and stdout buffers for request and response.
+// This will completely remove the need of the HTTPModule.
+// If the response is getting to complex we can use a binary
+// representation of some kind.
 func (r *Runtime) invokeGORuntime(ctx context.Context,
 	blob []byte,
 	cache wazero.CompilationCache,
@@ -209,6 +225,7 @@ func NewRequestModule(req *proto.HTTPRequest) (*RequestModule, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return &RequestModule{
 		requestBytes: b,
 	}, nil
