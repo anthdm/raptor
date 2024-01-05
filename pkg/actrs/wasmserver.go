@@ -125,6 +125,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.cluster.Engine().Send(s.self, reqres)
 
 	resp := <-reqres.response
+
 	w.WriteHeader(int(resp.StatusCode))
 	w.Write(resp.Response)
 }

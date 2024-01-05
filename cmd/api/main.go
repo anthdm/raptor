@@ -12,8 +12,8 @@ import (
 	"github.com/anthdm/run/pkg/config"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
+	"github.com/bananabytelabs/wazero"
 	"github.com/google/uuid"
-	"github.com/tetratelabs/wazero"
 )
 
 func main() {
@@ -47,13 +47,13 @@ func main() {
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {
-	b, err := os.ReadFile("examples/js/index.js")
+	b, err := os.ReadFile("examples/go/app.wasm")
 	if err != nil {
 		log.Fatal(err)
 	}
 	endpoint := &types.Endpoint{
 		ID:          uuid.MustParse("09248ef6-c401-4601-8928-5964d61f2c61"),
-		Runtime:     "js",
+		Runtime:     "go",
 		Name:        "Catfact parser",
 		Environment: map[string]string{"FOO": "bar"},
 		CreatedAT:   time.Now(),

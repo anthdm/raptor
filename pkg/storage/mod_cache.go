@@ -3,8 +3,8 @@ package storage
 import (
 	"sync"
 
+	"github.com/bananabytelabs/wazero"
 	"github.com/google/uuid"
-	"github.com/tetratelabs/wazero"
 )
 
 type ModCacher interface {

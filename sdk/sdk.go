@@ -2,11 +2,12 @@ package run
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
-	"unsafe"
+	"strings"
 
 	"github.com/anthdm/run/proto"
 	_ "github.com/stealthrocket/net/http"
@@ -25,49 +26,29 @@ type request struct {
 	URL    string
 }
 
-//go:wasmimport env write_request
-//go:noescape
-func writeRequest(ptr uint32)
-
-//go:wasmimport env write_response
-//go:noescape
-func writeResponse(ptr uint32, size uint32)
-
 func Handle(h http.Handler) {
-	// the spec makes sure the size of the incoming request is passed as args
-	// to skip invocations. [run, len]
-	requestSize, err := strconv.Atoi(os.Args[1])
+	b, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
-	requestBuffer = make([]byte, requestSize)
-
-	ptr := &requestBuffer[0]
-	unsafePtr := uint32(uintptr(unsafe.Pointer(ptr)))
-
-	writeRequest(unsafePtr)
-
 	var req proto.HTTPRequest
-	if err := prot.Unmarshal(requestBuffer, &req); err != nil {
+	if err := prot.Unmarshal(b, &req); err != nil {
 		log.Fatal(err)
 	}
 
+	fmt.Println(req.URL)
 	w := &ResponseWriter{}
-	r, _ := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
+	r, err := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
+	if err != nil {
+		log.Fatal(err)
+	}
 	for k, v := range req.Header {
 		r.Header[k] = v.Fields
 	}
 	h.ServeHTTP(w, r) // execute the user's handler
-
-	if w.buffer.Len() > 0 {
-		responseBuffer = w.buffer.Bytes()
-	} else {
-		responseBuffer = []byte("Hailstorm application. Coming soon...")
-	}
-
-	ptr = &responseBuffer[0]
-	unsafePtr = uint32(uintptr(unsafe.Pointer(ptr)))
-	writeResponse(unsafePtr, uint32(len(responseBuffer)))
+	out := strings.TrimRight(w.buffer.String(), "\n")
+	fmt.Println(out)
+	fmt.Println(w.statusCode)
 }
 
 type ResponseWriter struct {
