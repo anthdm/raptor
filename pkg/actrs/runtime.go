@@ -5,7 +5,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"time"
@@ -19,7 +18,6 @@ import (
 	"github.com/anthdm/run/proto"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
-	wapi "github.com/tetratelabs/wazero/api"
 
 	prot "google.golang.org/protobuf/proto"
 )
@@ -130,98 +128,6 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	}
 	if err := r.metricStore.CreateRuntimeMetric(&metric); err != nil {
 		slog.Warn("failed to create runtime metric", "err", err)
-	}
-}
-
-func (r *Runtime) invokeJSRuntime(ctx context.Context, blob []byte, buffer io.Writer, env map[string]string) {
-	// modcache, ok := r.cache.Get(r.deployID)
-	// if !ok {
-	// 	modcache = wazero.NewCompilationCache()
-	// 	slog.Warn("no cache hit", "endpoint", r.endpointID)
-	// 	r.cache.Put(r.endpointID, modcache)
-	// }
-	// config := wazero.NewRuntimeConfig().WithCompilationCache(modcache)
-	// runtime := wazero.NewRuntimeWithConfig(ctx, config)
-	// defer runtime.Close(ctx)
-
-	// mod, err := runtime.CompileModule(ctx, spidermonkey.WasmBlob)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// wasi_snapshot_preview1.MustInstantiate(ctx, runtime)
-	// modConfig := wazero.NewModuleConfig().
-	// 	WithStdin(os.Stdin).
-	// 	WithStdout(buffer).
-	// 	WithArgs("", "-e", string(blob))
-	// _, err = runtime.InstantiateModule(ctx, mod, modConfig)
-	// if err != nil {
-	// 	panic(err)
-	// }
-}
-
-func envMapToSlice(env map[string]string) []string {
-	slice := make([]string, len(env))
-	i := 0
-	for k, v := range env {
-		s := fmt.Sprintf("%s=%s", k, v)
-		slice[i] = s
-		i++
-	}
-	return slice
-}
-
-type RequestModule struct {
-	requestBytes  []byte
-	responseBytes []byte
-}
-
-func NewRequestModule(req *proto.HTTPRequest) (*RequestModule, error) {
-	b, err := prot.Marshal(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return &RequestModule{
-		requestBytes: b,
-	}, nil
-}
-
-func (r *RequestModule) WriteResponse(w io.Writer) (int, error) {
-	return w.Write(r.responseBytes)
-}
-
-func (r *RequestModule) Instantiate(ctx context.Context, runtime wazero.Runtime) error {
-	_, err := runtime.NewHostModuleBuilder("env").
-		NewFunctionBuilder().
-		WithGoModuleFunction(r.moduleWriteRequest(), []wapi.ValueType{wapi.ValueTypeI32}, []wapi.ValueType{}).
-		Export("write_request").
-		NewFunctionBuilder().
-		WithGoModuleFunction(r.moduleWriteResponse(), []wapi.ValueType{wapi.ValueTypeI32, wapi.ValueTypeI32}, []wapi.ValueType{}).
-		Export("write_response").
-		Instantiate(ctx)
-	return err
-}
-
-func (r *RequestModule) Close(ctx context.Context) error {
-	r.responseBytes = nil
-	r.requestBytes = nil
-	return nil
-}
-
-func (r *RequestModule) moduleWriteRequest() wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		offset := wapi.DecodeU32(stack[0])
-		module.Memory().Write(offset, r.requestBytes)
-	}
-}
-
-func (r *RequestModule) moduleWriteResponse() wapi.GoModuleFunc {
-	return func(ctx context.Context, module wapi.Module, stack []uint64) {
-		offset := wapi.DecodeU32(stack[0])
-		size := wapi.DecodeU32(stack[1])
-		resp, _ := module.Memory().Read(offset, size)
-		r.responseBytes = resp
 	}
 }
 
