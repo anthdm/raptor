@@ -53,9 +53,6 @@ func (s *MemoryStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) 
 			endpoint.Environment[key] = val
 		}
 	}
-	if len(params.Deploys) > 0 {
-		endpoint.DeployHistory = append(endpoint.DeployHistory, params.Deploys...)
-	}
 	return nil
 }
 

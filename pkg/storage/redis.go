@@ -89,8 +89,8 @@ func (s *RedisStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) e
 			endpoint.Environment[key] = val
 		}
 	}
-	if len(params.Deploys) > 0 {
-		endpoint.DeployHistory = append(endpoint.DeployHistory, params.Deploys...)
+	if params.DeployHistory != nil {
+		endpoint.DeployHistory = append(endpoint.DeployHistory, params.DeployHistory)
 	}
 	b, err := msgpack.Marshal(endpoint)
 	if err != nil {

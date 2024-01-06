@@ -12,6 +12,7 @@ import (
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/run/pkg/runtime"
+	"github.com/anthdm/run/pkg/spidermonkey"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
 	"github.com/anthdm/run/pkg/util"
@@ -80,7 +81,6 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	in := bytes.NewReader(b)
 	out := &bytes.Buffer{}
 	args := runtime.InvokeArgs{
-		Blob:  deploy.Blob,
 		Env:   msg.Env,
 		In:    in,
 		Out:   out,
@@ -89,12 +89,17 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 
 	switch msg.Runtime {
 	case "go":
-		err = runtime.Invoke(context.Background(), args)
+		args.Blob = deploy.Blob
 	case "js":
+		args.Blob = spidermonkey.WasmBlob
+		args.Args = []string{"", "-e", string(deploy.Blob)}
 	default:
 		err = fmt.Errorf("invalid runtime: %s", msg.Runtime)
 	}
+
+	err = runtime.Invoke(context.Background(), args)
 	if err != nil {
+		slog.Error("runtime invoke error", "err", err)
 		respondError(ctx, http.StatusInternalServerError, "internal server error", msg.ID)
 		return
 	}

@@ -23,7 +23,7 @@ type Endpoint struct {
 	Runtime        string            `json:"runtime"`
 	ActiveDeployID uuid.UUID         `json:"active_deploy_id"`
 	Environment    map[string]string `json:"environment"`
-	DeployHistory  []*Deploy         `json:"deploy_history"`
+	DeployHistory  []*DeployHistory  `json:"deploy_history"`
 	CreatedAT      time.Time         `json:"created_at"`
 }
 
@@ -42,7 +42,12 @@ func NewEndpoint(name string, runtime string, env map[string]string) *Endpoint {
 		Environment:   env,
 		Runtime:       runtime,
 		URL:           "",
-		DeployHistory: []*Deploy{},
+		DeployHistory: []*DeployHistory{},
 		CreatedAT:     time.Now(),
 	}
+}
+
+type DeployHistory struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAT time.Time `json:"created_at"`
 }

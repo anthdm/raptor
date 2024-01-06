@@ -22,5 +22,5 @@ type MetricStore interface {
 type UpdateEndpointParams struct {
 	Environment    map[string]string
 	ActiveDeployID uuid.UUID
-	Deploys        []*types.Deploy
+	DeployHistory  *types.DeployHistory
 }
