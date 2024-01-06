@@ -2,7 +2,7 @@
 Build, Deploy, and Run your applications on the edge.
 
 # Installation
-Documentation on how to use Raptor yourself is coming soon.
+Still already and rough on the edges. But documentation on how to use Raptor yourself is coming soon.
 
 ## API Server Endpoints
 
