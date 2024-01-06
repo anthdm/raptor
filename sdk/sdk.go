@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/anthdm/run/proto"
-	_ "github.com/stealthrocket/net/http"
+	// _ "github.com/stealthrocket/net/http"
 	prot "google.golang.org/protobuf/proto"
 )
 
@@ -36,7 +36,6 @@ func Handle(h http.Handler) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(req.URL)
 	w := &ResponseWriter{}
 	r, err := http.NewRequest(req.Method, req.URL, bytes.NewReader(req.Body))
 	if err != nil {

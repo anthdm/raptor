@@ -13,12 +13,12 @@ require (
 )
 
 require (
-	github.com/bananabytelabs/wazero v0.0.0-20240105073314-54b22a776da8 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/planetscale/vtprotobuf v0.4.0 // indirect
+	github.com/tetratelabs/wazero v1.6.0 // indirect
 	github.com/zeebo/errs v1.2.2 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611 // indirect
@@ -29,8 +29,8 @@ require (
 )
 
 require (
+	github.com/go-chi/chi v1.5.5
 	github.com/pelletier/go-toml/v2 v2.1.1
-	github.com/stealthrocket/wazergo v0.19.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect

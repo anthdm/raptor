@@ -5,8 +5,7 @@ import (
 	"net/http"
 
 	run "github.com/anthdm/run/sdk"
-	"github.com/go-chi/chi/v5"
-	_ "github.com/stealthrocket/net/http"
+	"github.com/go-chi/chi"
 )
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {

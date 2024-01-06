@@ -1,8 +1,8 @@
-# Run
-Run your applications in a distributed cloud on the edge.
+# Raptor
+Build, Deploy, and Run your applications on the edge.
 
 # Installation
-Documentation on how to use Run yourself is coming soon.
+Documentation on how to use Raptor yourself is coming soon.
 
 ## API Server Endpoints
 

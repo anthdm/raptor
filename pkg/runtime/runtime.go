@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/bananabytelabs/wazero"
-	"github.com/bananabytelabs/wazero/imports/wasi_snapshot_preview1"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 type InvokeArgs struct {
@@ -24,7 +24,9 @@ type InvokeArgs struct {
 
 func Invoke(ctx context.Context, args InvokeArgs) error {
 	start := time.Now()
-	config := wazero.NewRuntimeConfig().WithCompilationCache(args.Cache)
+	// only arm64
+	// config := opt.NewRuntimeConfigOptimizingCompiler().WithCompilationCache(args.Cache)
+	config := wazero.NewRuntimeConfigCompiler().WithCompilationCache(args.Cache)
 	runtime := wazero.NewRuntimeWithConfig(ctx, config)
 	defer runtime.Close(ctx)
 

@@ -16,9 +16,9 @@ import (
 	"github.com/anthdm/run/pkg/types"
 	"github.com/anthdm/run/pkg/util"
 	"github.com/anthdm/run/proto"
-	"github.com/bananabytelabs/wazero"
-	wapi "github.com/bananabytelabs/wazero/api"
 	"github.com/google/uuid"
+	"github.com/tetratelabs/wazero"
+	wapi "github.com/tetratelabs/wazero/api"
 
 	prot "google.golang.org/protobuf/proto"
 )
@@ -56,8 +56,6 @@ func (r *Runtime) Receive(c *actor.Context) {
 }
 
 func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) {
-	start := time.Now()
-
 	r.deployID = uuid.MustParse(msg.ActiveDeployID)
 	deploy, err := r.store.GetDeploy(r.deployID)
 	if err != nil {
@@ -113,8 +111,6 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	}
 
 	ctx.Respond(resp)
-
-	fmt.Println("runtine handle HTTP took: ", time.Since(start))
 
 	r.cache.Put(deploy.EndpointID, modCache)
 

@@ -16,9 +16,9 @@ import (
 	"github.com/anthdm/run/pkg/config"
 	"github.com/anthdm/run/pkg/types"
 	"github.com/anthdm/run/pkg/util"
-	"github.com/bananabytelabs/wazero"
-	"github.com/bananabytelabs/wazero/imports/wasi_snapshot_preview1"
 	"github.com/google/uuid"
+	"github.com/tetratelabs/wazero"
+	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 func printUsage() {

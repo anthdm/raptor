@@ -12,8 +12,8 @@ import (
 	"github.com/anthdm/run/pkg/config"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
-	"github.com/bananabytelabs/wazero"
 	"github.com/google/uuid"
+	"github.com/tetratelabs/wazero"
 )
 
 func main() {
