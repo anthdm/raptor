@@ -32,10 +32,53 @@ func main() {
 		log.Fatal(err)
 	}
 
-	store, err := storage.NewRedisStore()
+	var (
+		user    = config.Get().Storage.User
+		pw      = config.Get().Storage.Password
+		dbname  = config.Get().Storage.Name
+		host    = config.Get().Storage.Host
+		port    = config.Get().Storage.Port
+		sslmode = config.Get().Storage.SSLMode
+	)
+	store, err := storage.NewSQLStore(user, pw, dbname, host, port, sslmode)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	endpoint := types.NewEndpoint("boo", "go", map[string]string{"FOO": "BAR"})
+	err = store.CreateEndpoint(endpoint)
+	if err != nil {
+		log.Fatal(err)
+	}
+	e, err := store.GetEndpoint(endpoint.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	deploy := types.NewDeploy(endpoint, []byte("foo"))
+	err = store.CreateDeploy(deploy)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	d, err := store.GetDeploy(deploy.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(d)
+
+	err = store.UpdateEndpoint(endpoint.ID, storage.UpdateEndpointParams{
+		Environment: map[string]string{"BAR": "CDDD"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	e, err = store.GetEndpoint(endpoint.ID)
+	fmt.Println(e.ActiveDeployID)
+
+	fmt.Println(e)
 
 	if seed {
 		seedEndpoint(store, modCache)

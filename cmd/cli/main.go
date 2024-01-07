@@ -2,12 +2,10 @@ package main
 
 import (
 	"bytes"
-	"context"
 	_ "embed"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -15,10 +13,7 @@ import (
 	"github.com/anthdm/run/pkg/client"
 	"github.com/anthdm/run/pkg/config"
 	"github.com/anthdm/run/pkg/types"
-	"github.com/anthdm/run/pkg/util"
 	"github.com/google/uuid"
-	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
 
 func printUsage() {
@@ -63,6 +58,7 @@ var (
 	endpointID string
 	configFile string
 	runtime    string
+	addr       string
 )
 
 func main() {
@@ -70,7 +66,9 @@ func main() {
 	flagset.Usage = printUsage
 	flagset.StringVar(&endpointID, "endpoint", "", "")
 	flagset.StringVar(&configFile, "config", "config.toml", "")
+	flagset.StringVar(&addr, "addr", ":3000", "")
 	flagset.StringVar(&runtime, "runtime", "", "")
+
 	flagset.Var(&env, "env", "")
 	flagset.Parse(os.Args[1:])
 
@@ -108,11 +106,11 @@ func main() {
 			printUsage()
 		}
 		command.handleDeploy(args[1:])
-	case "run":
+	case "serve":
 		if len(args) < 2 {
 			printUsage()
 		}
-		command.handleRunEndpoint(args[1:])
+		command.handleServeEndpoint(args[1:])
 	case "help":
 		printUsage()
 	default:
@@ -209,50 +207,50 @@ func (c command) handleDeploy(args []string) {
 	fmt.Printf("deploy is live on: %s/%s\n", config.GetWasmUrl(), deploy.EndpointID)
 }
 
-func (c command) handleRunEndpoint(args []string) {
-	ctx := context.Background()
-	config := wazero.NewRuntimeConfig()
-	runt := wazero.NewRuntimeWithConfig(ctx, config)
+func (c command) handleServeEndpoint(args []string) {
+	fmt.Println("TODO")
+	// b, err := os.ReadFile(args[0])
+	// if err != nil {
+	// 	printErrorAndExit(err)
+	// }
 
-	b, err := os.ReadFile("js.wasm")
-	if err != nil {
-		printErrorAndExit(err)
-	}
-	jsb, err := os.ReadFile(args[0])
-	if err != nil {
-		printErrorAndExit(err)
-	}
+	// out := &bytes.Buffer{}
 
-	mod, err := runt.CompileModule(ctx, b)
-	if err != nil {
-		printErrorAndExit(err)
-	}
+	// http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	if r.URL.Path == "/favicon.ico" {
+	// 		return
+	// 	}
+	// 	preq, err := shared.MakeProtoRequest(uuid.NewString(), r)
+	// 	if err != nil {
+	// 		w.Write([]byte(err.Error()))
+	// 		return
+	// 	}
+	// 	fmt.Println(preq)
+	// 	reqb, err := proto.Marshal(preq)
+	// 	if err != nil {
+	// 		w.Write([]byte(err.Error()))
+	// 		return
+	// 	}
 
-	wasi_snapshot_preview1.MustInstantiate(ctx, runt)
+	// 	invokeArgs := run.InvokeArgs{
+	// 		Blob: b,
+	// 		Out:  out,
+	// 		In:   bytes.NewBuffer(reqb),
+	// 	}
 
-	http.ListenAndServe(":3000", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/favicon.ico" {
-			return
-		}
-		out := &bytes.Buffer{}
-		modConfig := wazero.NewModuleConfig().
-			WithStdout(out).
-			WithStdin(os.Stdin).
-			WithStderr(os.Stderr).
-			WithArgs("", "-e", string(jsb))
-		_, err = runt.InstantiateModule(ctx, mod, modConfig)
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		resp, status, err := util.ParseRuntimeHTTPResponse(out.String())
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		w.WriteHeader(status)
-		w.Write([]byte(resp))
-	}))
+	// 	if err := run.Invoke(r.Context(), invokeArgs); err != nil {
+	// 		w.Write([]byte(err.Error()))
+	// 		return
+	// 	}
+
+	// 	resp, status, err := shared.ParseRuntimeHTTPResponse(out.String())
+	// 	if err != nil {
+	// 		w.Write([]byte(err.Error()))
+	// 		return
+	// 	}
+	// 	w.WriteHeader(status)
+	// 	w.Write([]byte(resp))
+	// }))
 }
 
 func makeEnvMap(list []string) map[string]string {

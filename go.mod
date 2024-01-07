@@ -17,6 +17,8 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+	github.com/mattn/go-sqlite3 v1.14.19 // indirect
 	github.com/planetscale/vtprotobuf v0.4.0 // indirect
 	github.com/tetratelabs/wazero v1.6.0 // indirect
 	github.com/zeebo/errs v1.2.2 // indirect
@@ -30,6 +32,7 @@ require (
 
 require (
 	github.com/go-chi/chi v1.5.5
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/net v0.17.0 // indirect

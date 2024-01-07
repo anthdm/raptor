@@ -11,10 +11,10 @@ import (
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/run/pkg/runtime"
+	"github.com/anthdm/run/pkg/shared"
 	"github.com/anthdm/run/pkg/spidermonkey"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/pkg/types"
-	"github.com/anthdm/run/pkg/util"
 	"github.com/anthdm/run/proto"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
@@ -102,7 +102,7 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	res, status, err := util.ParseRuntimeHTTPResponse(out.String())
+	res, status, err := shared.ParseRuntimeHTTPResponse(out.String())
 	if err != nil {
 		respondError(ctx, http.StatusInternalServerError, "internal server error", msg.ID)
 		return

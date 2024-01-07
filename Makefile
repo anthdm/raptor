@@ -27,3 +27,6 @@ goex:
 
 jsex:
 	javy compile examples/js/index.js -o examples/js/index.wasm
+
+postgres:
+	docker run --name raptordb -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres

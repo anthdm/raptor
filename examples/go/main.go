@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	run "github.com/anthdm/run/sdk"
@@ -10,16 +9,15 @@ import (
 
 func handleLogin(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("on the login page"))
+	w.Write([]byte("hello from the login handler"))
 }
 
 func handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("hello from the dashboard"))
+	w.Write([]byte("hello from the dashboard handler"))
 }
 
 func main() {
-	fmt.Println("this worked")
 	router := chi.NewMux()
 	router.Get("/dashboard", handleDashboard)
 	router.Get("/login", handleLogin)

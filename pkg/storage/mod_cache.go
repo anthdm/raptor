@@ -4,6 +4,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+
+	_ "github.com/stealthrocket/net/http"
 	"github.com/tetratelabs/wazero"
 )
 

@@ -1,14 +1,13 @@
 package actrs
 
 import (
-	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
+	"github.com/anthdm/run/pkg/shared"
 	"github.com/anthdm/run/pkg/storage"
 	"github.com/anthdm/run/proto"
 	"github.com/google/uuid"
@@ -110,7 +109,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	requestID := uuid.NewString()
 	r.Header.Set("x-request-id", requestID)
-	req, err := makeProtoRequest(requestID, r)
+	req, err := shared.MakeProtoRequest(requestID, r)
 	if err != nil {
 		writeResponse(w, http.StatusInternalServerError, []byte(err.Error()))
 		return
@@ -129,40 +128,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp.Response)
 }
 
-func makeProtoRequest(id string, r *http.Request) (*proto.HTTPRequest, error) {
-	b, err := io.ReadAll(r.Body)
-	if err != nil {
-		return nil, err
-	}
-	return &proto.HTTPRequest{
-		Header: makeProtoHeader(r.Header),
-		ID:     id,
-		Body:   b,
-		Method: r.Method,
-		URL:    trimmedEndpointFromURL(r.URL),
-	}, nil
-}
-
 func writeResponse(w http.ResponseWriter, code int, b []byte) {
 	w.WriteHeader(http.StatusNotFound)
 	w.Write(b)
-}
-
-func trimmedEndpointFromURL(url *url.URL) string {
-	path := strings.TrimPrefix(url.Path, "/")
-	pathParts := strings.Split(path, "/")
-	if len(pathParts) == 0 {
-		return "/"
-	}
-	return "/" + strings.Join(pathParts[1:], "/")
-}
-
-func makeProtoHeader(header http.Header) map[string]*proto.HeaderFields {
-	m := make(map[string]*proto.HeaderFields, len(header))
-	for k, v := range header {
-		m[k] = &proto.HeaderFields{
-			Fields: v,
-		}
-	}
-	return m
 }
