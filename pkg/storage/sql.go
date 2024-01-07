@@ -90,7 +90,7 @@ func (s *SQLStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) err
 }
 
 func (s *SQLStore) GetDeploy(id uuid.UUID) (*types.Deploy, error) {
-	stmt := "SELECT id, endpoint_id, hash, created_at FROM deploy WHERE id = $1"
+	stmt := "SELECT id, endpoint_id, hash, blob, created_at FROM deploy WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 
 	var deploy types.Deploy
@@ -158,6 +158,7 @@ func scanDeploy(s Scanner, d *types.Deploy) error {
 		&d.ID,
 		&d.EndpointID,
 		&d.Hash,
+		&d.Blob,
 		&d.CreatedAT,
 	)
 }

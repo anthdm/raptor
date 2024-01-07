@@ -22,7 +22,7 @@ func main() {
 		configFile string
 		seed       bool
 	)
-	flagSet := flag.NewFlagSet("run", flag.ExitOnError)
+	flagSet := flag.NewFlagSet("raptor", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
 	flagSet.BoolVar(&seed, "seed", false, "")
 	flagSet.Parse(os.Args[1:])
@@ -44,41 +44,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	endpoint := types.NewEndpoint("boo", "go", map[string]string{"FOO": "BAR"})
-	err = store.CreateEndpoint(endpoint)
-	if err != nil {
-		log.Fatal(err)
-	}
-	e, err := store.GetEndpoint(endpoint.ID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	deploy := types.NewDeploy(endpoint, []byte("foo"))
-	err = store.CreateDeploy(deploy)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	d, err := store.GetDeploy(deploy.ID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(d)
-
-	err = store.UpdateEndpoint(endpoint.ID, storage.UpdateEndpointParams{
-		Environment: map[string]string{"BAR": "CDDD"},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	e, err = store.GetEndpoint(endpoint.ID)
-	fmt.Println(e.ActiveDeployID)
-
-	fmt.Println(e)
 
 	if seed {
 		seedEndpoint(store, modCache)
@@ -111,6 +76,12 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	})
 	store.CreateEndpoint(endpoint)
 	store.CreateDeploy(deploy)
+	err = store.UpdateEndpoint(endpoint.ID, storage.UpdateEndpointParams{
+		ActiveDeployID: deploy.ID,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("endpoint seeded: %s\n", endpoint.URL)
 }
 

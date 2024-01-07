@@ -9,12 +9,24 @@ import (
 )
 
 const defaultConfig = `
-wasmClusterAddr		= "localhost:6666"
 wasmServerAddr 		= "localhost:5000"
 apiServerAddr 		= "localhost:3000"
 storageDriver 		= "sqlite"
-apiToken 			= ""
+apiToken			= "foobarbaz"
 authorization		= false
+
+[cluster]
+addr 				= "localhost:6666"
+id					= "wasm_member_1" 
+region				= "eu-west"
+
+[storage]
+user 				= "postgres"
+password 			= "postgres"
+name 				= "postgres"
+host				= "localhost"
+port				= "5432"
+sslmode 			= "disable"
 `
 
 // Config holds the global configuration which is READONLY.
@@ -29,15 +41,21 @@ type Storage struct {
 	SSLMode  string
 }
 
+type Cluster struct {
+	WasmMemberAddr string
+	ID             string
+	Region         string
+}
+
 type Config struct {
-	APIServerAddr   string
-	WASMServerAddr  string
-	StorageDriver   string
-	WASMClusterAddr string
-	APIToken        string
-	Authorization   bool
+	APIServerAddr  string
+	WASMServerAddr string
+	StorageDriver  string
+	APIToken       string
+	Authorization  bool
 
 	Storage Storage
+	Cluster Cluster
 }
 
 func Parse(path string) error {

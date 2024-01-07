@@ -18,7 +18,7 @@ import (
 
 func main() {
 	var configFile string
-	flagSet := flag.NewFlagSet("run", flag.ExitOnError)
+	flagSet := flag.NewFlagSet("raptor", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
 	flagSet.Parse(os.Args[1:])
 
@@ -27,7 +27,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	store, err := storage.NewRedisStore()
+	var (
+		user    = config.Get().Storage.User
+		pw      = config.Get().Storage.Password
+		dbname  = config.Get().Storage.Name
+		host    = config.Get().Storage.Host
+		port    = config.Get().Storage.Port
+		sslmode = config.Get().Storage.SSLMode
+	)
+	store, err := storage.NewSQLStore(user, pw, dbname, host, port, sslmode)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,18 +44,17 @@ func main() {
 		metricStore = store
 	)
 
-	remote := remote.New(config.Get().WASMClusterAddr, nil)
+	remote := remote.New(config.Get().Cluster.WasmMemberAddr, nil)
 	engine, err := actor.NewEngine(&actor.EngineConfig{
 		Remote: remote,
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	// TODO: Get these values from the config.
 	c, err := cluster.New(cluster.Config{
-		Region:          "f",
+		Region:          config.Get().Cluster.Region,
 		Engine:          engine,
-		ID:              "member1",
+		ID:              config.Get().Cluster.ID,
 		ClusterProvider: cluster.NewSelfManagedProvider(),
 	})
 	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, metricStore, modCache), &cluster.KindConfig{})
