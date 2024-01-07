@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
-	"github.com/anthdm/run/pkg/runtime"
-	"github.com/anthdm/run/pkg/shared"
-	"github.com/anthdm/run/pkg/spidermonkey"
-	"github.com/anthdm/run/pkg/storage"
-	"github.com/anthdm/run/pkg/types"
-	"github.com/anthdm/run/proto"
+	"github.com/anthdm/raptor/pkg/runtime"
+	"github.com/anthdm/raptor/pkg/shared"
+	"github.com/anthdm/raptor/pkg/spidermonkey"
+	"github.com/anthdm/raptor/pkg/storage"
+	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/proto"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 

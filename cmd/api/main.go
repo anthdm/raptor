@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/anthdm/run/pkg/api"
-	"github.com/anthdm/run/pkg/config"
-	"github.com/anthdm/run/pkg/storage"
-	"github.com/anthdm/run/pkg/types"
+	"github.com/anthdm/raptor/pkg/api"
+	"github.com/anthdm/raptor/pkg/config"
+	"github.com/anthdm/raptor/pkg/storage"
+	"github.com/anthdm/raptor/pkg/types"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
 )

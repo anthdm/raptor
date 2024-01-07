@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anthdm/run/proto"
+	"github.com/anthdm/raptor/proto"
 	//_ "github.com/stealthrocket/net/http"
 	prot "google.golang.org/protobuf/proto"
 )

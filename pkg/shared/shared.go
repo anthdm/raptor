@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anthdm/run/proto"
+	"github.com/anthdm/raptor/proto"
 )
 
 func ParseRuntimeHTTPResponse(in string) (resp string, status int, err error) {

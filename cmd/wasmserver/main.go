@@ -11,9 +11,9 @@ import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
 	"github.com/anthdm/hollywood/remote"
-	"github.com/anthdm/run/pkg/actrs"
-	"github.com/anthdm/run/pkg/config"
-	"github.com/anthdm/run/pkg/storage"
+	"github.com/anthdm/raptor/pkg/actrs"
+	"github.com/anthdm/raptor/pkg/config"
+	"github.com/anthdm/raptor/pkg/storage"
 )
 
 func main() {
