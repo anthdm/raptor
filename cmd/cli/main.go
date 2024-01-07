@@ -18,9 +18,7 @@ import (
 
 func printUsage() {
 	fmt.Printf(`
-Usage: run [OPTIONS] COMMAND
-
-Run any application in the cloud and on the edge
+Usage: raptor [OPTIONS] COMMAND
 
 Options:
 --env			Set and environment variable [--env foo=bar]
