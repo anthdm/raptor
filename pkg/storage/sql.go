@@ -89,18 +89,18 @@ func (s *SQLStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) err
 	return err
 }
 
-func (s *SQLStore) GetDeploy(id uuid.UUID) (*types.Deploy, error) {
-	stmt := "SELECT id, endpoint_id, hash, blob, created_at FROM deploy WHERE id = $1"
+func (s *SQLStore) GetDeployment(id uuid.UUID) (*types.Deployment, error) {
+	stmt := "SELECT id, endpoint_id, hash, blob, created_at FROM deployment WHERE id = $1"
 	row := s.db.QueryRow(stmt, id)
 
-	var deploy types.Deploy
+	var deploy types.Deployment
 	err := scanDeploy(row, &deploy)
 	return &deploy, err
 }
 
-func (s *SQLStore) CreateDeploy(deploy *types.Deploy) error {
+func (s *SQLStore) CreateDeployment(deploy *types.Deployment) error {
 	stmt := `
-INSERT INTO deploy (id, endpoint_id, hash, blob, created_at)
+INSERT INTO deployment (id, endpoint_id, hash, blob, created_at)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING id`
 	_, err := s.db.Exec(stmt,
@@ -132,7 +132,7 @@ func buildUpdateEndpointQuery(id uuid.UUID, params UpdateEndpointParams) (string
 	)
 
 	if params.ActiveDeployID.String() != "00000000-0000-0000-0000-000000000000" {
-		updates = append(updates, fmt.Sprintf("active_deploy_id = $%d", counter))
+		updates = append(updates, fmt.Sprintf("active_deployment_id = $%d", counter))
 		args = append(args, params.ActiveDeployID)
 		counter++
 	}
@@ -153,7 +153,7 @@ func buildUpdateEndpointQuery(id uuid.UUID, params UpdateEndpointParams) (string
 	return query, args
 }
 
-func scanDeploy(s Scanner, d *types.Deploy) error {
+func scanDeploy(s Scanner, d *types.Deployment) error {
 	return s.Scan(
 		&d.ID,
 		&d.EndpointID,
@@ -172,7 +172,7 @@ func scanEndpoint(s Scanner, e *types.Endpoint) error {
 		&e.Runtime,
 		&envData,
 		&e.CreatedAT,
-		&e.ActiveDeployID,
+		&e.ActiveDeploymentID,
 	)
 	if err != nil {
 		return err
@@ -190,7 +190,7 @@ CREATE TABLE if not exists endpoint (
 	created_at timestamp not null default now()
 );
 
-CREATE TABLE if not exists deploy (
+CREATE TABLE if not exists deployment (
 	id UUID primary key, 
 	endpoint_id UUID not null references endpoint,
 	hash text not null,
@@ -199,5 +199,5 @@ CREATE TABLE if not exists deploy (
 );
 
 ALTER table endpoint
-ADD COLUMN if not exists active_deploy_id UUID references deploy 
+ADD COLUMN if not exists active_deployment_id UUID references deployment
 `

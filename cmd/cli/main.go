@@ -192,7 +192,7 @@ func (c command) handleDeploy(args []string) {
 	if err != nil {
 		printErrorAndExit(err)
 	}
-	deploy, err := c.client.CreateDeploy(id, bytes.NewReader(b), api.CreateDeployParams{})
+	deploy, err := c.client.CreateDeployment(id, bytes.NewReader(b), api.CreateDeploymentParams{})
 	if err != nil {
 		printErrorAndExit(err)
 	}

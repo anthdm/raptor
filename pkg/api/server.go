@@ -47,7 +47,7 @@ func (s *Server) initRouter() {
 	s.router.Get("/endpoint", makeAPIHandler(s.handleGetEndpoints))
 	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
-	s.router.Post("/endpoint/{id}/deploy", makeAPIHandler(s.handleCreateDeploy))
+	s.router.Post("/endpoint/{id}/deployment", makeAPIHandler(s.handleCreateDeployment))
 	s.router.Post("/endpoint/{id}/rollback", makeAPIHandler(s.handleCreateRollback))
 }
 
@@ -103,10 +103,10 @@ func (s *Server) handleCreateEndpoint(w http.ResponseWriter, r *http.Request) er
 	return writeJSON(w, http.StatusOK, endpoint)
 }
 
-// CreateDeployParams holds all the necessary fields to deploy a new function.
-type CreateDeployParams struct{}
+// CreateDeploymentParams holds all the necessary fields to deploy a new function.
+type CreateDeploymentParams struct{}
 
-func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) error {
+func (s *Server) handleCreateDeployment(w http.ResponseWriter, r *http.Request) error {
 	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
@@ -120,8 +120,8 @@ func (s *Server) handleCreateDeploy(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
-	deploy := types.NewDeploy(endpoint, b)
-	if err := s.store.CreateDeploy(deploy); err != nil {
+	deploy := types.NewDeployment(endpoint, b)
+	if err := s.store.CreateDeployment(deploy); err != nil {
 		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
 	}
 	return writeJSON(w, http.StatusOK, deploy)
@@ -167,19 +167,19 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	currentDeployID := endpoint.ActiveDeployID
+	currentDeploymentID := endpoint.ActiveDeploymentID
 
 	var params CreateRollbackParams
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	if currentDeployID.String() == params.DeployID.String() {
+	if currentDeploymentID.String() == params.DeployID.String() {
 		err := fmt.Errorf("deploy %s already active", params.DeployID)
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	deploy, err := s.store.GetDeploy(params.DeployID)
+	deploy, err := s.store.GetDeployment(params.DeployID)
 	if err != nil {
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
@@ -191,7 +191,7 @@ func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) er
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	s.cache.Delete(currentDeployID)
+	s.cache.Delete(currentDeploymentID)
 
 	resp := CreateRollbackResponse{DeployID: deploy.ID}
 	return writeJSON(w, http.StatusOK, resp)

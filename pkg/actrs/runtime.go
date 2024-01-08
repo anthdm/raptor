@@ -55,8 +55,8 @@ func (r *Runtime) Receive(c *actor.Context) {
 }
 
 func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) {
-	r.deployID = uuid.MustParse(msg.DeployID)
-	deploy, err := r.store.GetDeploy(r.deployID)
+	r.deployID = uuid.MustParse(msg.DeploymentID)
+	deploy, err := r.store.GetDeployment(r.deployID)
 	if err != nil {
 		slog.Warn("runtime could not find the endpoint's active deploy from store", "err", err)
 		respondError(ctx, http.StatusInternalServerError, "internal server error", msg.ID)

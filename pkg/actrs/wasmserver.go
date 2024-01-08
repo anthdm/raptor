@@ -129,7 +129,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Runtime = endpoint.Runtime
 		req.EndpointID = endpointID.String()
-		req.DeployID = endpoint.ActiveDeployID.String()
+		req.DeploymentID = endpoint.ActiveDeploymentID.String()
 		req.Env = endpoint.Environment
 		req.Preview = false
 	}
@@ -139,7 +139,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
 			return
 		}
-		deploy, err := s.store.GetDeploy(deployID)
+		deploy, err := s.store.GetDeployment(deployID)
 		if err != nil {
 			writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
 			return
@@ -151,7 +151,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Runtime = endpoint.Runtime
 		req.EndpointID = endpoint.ID.String()
-		req.DeployID = endpoint.ActiveDeployID.String()
+		req.DeploymentID = endpoint.ActiveDeploymentID.String()
 		req.Env = endpoint.Environment
 		req.Preview = true
 	}

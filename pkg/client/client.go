@@ -92,7 +92,7 @@ func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoin
 	return &endpoint, nil
 }
 
-func (c *Client) CreateDeploy(endpointID uuid.UUID, blob io.Reader, params api.CreateDeployParams) (*types.Deploy, error) {
+func (c *Client) CreateDeployment(endpointID uuid.UUID, blob io.Reader, params api.CreateDeploymentParams) (*types.Deployment, error) {
 	url := fmt.Sprintf("%s/endpoint/%s/deploy", c.config.url, endpointID)
 	req, err := http.NewRequest("POST", url, blob)
 	if err != nil {
@@ -106,7 +106,7 @@ func (c *Client) CreateDeploy(endpointID uuid.UUID, blob io.Reader, params api.C
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("api responded with a non 200 status code: %d", resp.StatusCode)
 	}
-	var deploy types.Deploy
+	var deploy types.Deployment
 	if err := json.NewDecoder(resp.Body).Decode(&deploy); err != nil {
 		return nil, err
 	}

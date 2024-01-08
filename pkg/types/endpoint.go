@@ -17,18 +17,18 @@ func ValidRuntime(runtime string) bool {
 }
 
 type Endpoint struct {
-	ID             uuid.UUID         `json:"id"`
-	Name           string            `json:"name"`
-	URL            string            `json:"url"`
-	Runtime        string            `json:"runtime"`
-	ActiveDeployID uuid.UUID         `json:"active_deploy_id"`
-	Environment    map[string]string `json:"environment"`
-	DeployHistory  []*DeployHistory  `json:"deploy_history"`
-	CreatedAT      time.Time         `json:"created_at"`
+	ID                 uuid.UUID            `json:"id"`
+	Name               string               `json:"name"`
+	URL                string               `json:"url"`
+	Runtime            string               `json:"runtime"`
+	ActiveDeploymentID uuid.UUID            `json:"active_deployment_id"`
+	Environment        map[string]string    `json:"environment"`
+	DeploymentHistory  []*DeploymentHistory `json:"deployment_history"`
+	CreatedAT          time.Time            `json:"created_at"`
 }
 
 func (e Endpoint) HasActiveDeploy() bool {
-	return e.ActiveDeployID.String() != "00000000-0000-0000-0000-000000000000"
+	return e.ActiveDeploymentID.String() != "00000000-0000-0000-0000-000000000000"
 }
 
 func NewEndpoint(name string, runtime string, env map[string]string) *Endpoint {
@@ -37,17 +37,17 @@ func NewEndpoint(name string, runtime string, env map[string]string) *Endpoint {
 	}
 	id := uuid.New()
 	return &Endpoint{
-		ID:            id,
-		Name:          name,
-		Environment:   env,
-		Runtime:       runtime,
-		URL:           "",
-		DeployHistory: []*DeployHistory{},
-		CreatedAT:     time.Now(),
+		ID:                id,
+		Name:              name,
+		Environment:       env,
+		Runtime:           runtime,
+		URL:               "",
+		DeploymentHistory: []*DeploymentHistory{},
+		CreatedAT:         time.Now(),
 	}
 }
 
-type DeployHistory struct {
+type DeploymentHistory struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAT time.Time `json:"created_at"`
 }

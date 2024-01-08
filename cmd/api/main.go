@@ -67,15 +67,15 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 		CreatedAT:   time.Now(),
 	}
 
-	deploy := types.NewDeploy(endpoint, b)
-	endpoint.ActiveDeployID = deploy.ID
+	deploy := types.NewDeployment(endpoint, b)
+	endpoint.ActiveDeploymentID = deploy.ID
 	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
-	endpoint.DeployHistory = append(endpoint.DeployHistory, &types.DeployHistory{
+	endpoint.DeploymentHistory = append(endpoint.DeploymentHistory, &types.DeploymentHistory{
 		ID:        deploy.ID,
 		CreatedAT: deploy.CreatedAT,
 	})
 	store.CreateEndpoint(endpoint)
-	store.CreateDeploy(deploy)
+	store.CreateDeployment(deploy)
 	err = store.UpdateEndpoint(endpoint.ID, storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
 	})

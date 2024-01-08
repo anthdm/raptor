@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type Deploy struct {
+type Deployment struct {
 	ID         uuid.UUID `json:"id"`
 	EndpointID uuid.UUID `json:"endpoint_id"`
 	Hash       string    `json:"hash"`
@@ -16,11 +16,11 @@ type Deploy struct {
 	CreatedAT  time.Time `json:"created_at"`
 }
 
-func NewDeploy(endpoint *Endpoint, blob []byte) *Deploy {
+func NewDeployment(endpoint *Endpoint, blob []byte) *Deployment {
 	hashBytes := md5.Sum(blob)
 	hashstr := hex.EncodeToString(hashBytes[:])
 	deployID := uuid.New()
-	return &Deploy{
+	return &Deployment{
 		ID:         deployID,
 		EndpointID: endpoint.ID,
 		Blob:       blob,

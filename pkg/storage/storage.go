@@ -10,8 +10,8 @@ type Store interface {
 	UpdateEndpoint(uuid.UUID, UpdateEndpointParams) error
 	GetEndpoint(uuid.UUID) (*types.Endpoint, error)
 	GetEndpoints() ([]types.Endpoint, error)
-	CreateDeploy(*types.Deploy) error
-	GetDeploy(uuid.UUID) (*types.Deploy, error)
+	CreateDeployment(*types.Deployment) error
+	GetDeployment(uuid.UUID) (*types.Deployment, error)
 }
 
 type MetricStore interface {
@@ -20,7 +20,7 @@ type MetricStore interface {
 }
 
 type UpdateEndpointParams struct {
-	Environment    map[string]string
-	ActiveDeployID uuid.UUID
-	DeployHistory  *types.DeployHistory
+	Environment       map[string]string
+	ActiveDeployID    uuid.UUID
+	DeploymentHistory *types.DeploymentHistory
 }
