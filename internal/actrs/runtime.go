@@ -10,11 +10,11 @@ import (
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
-	"github.com/anthdm/raptor/pkg/runtime"
-	"github.com/anthdm/raptor/pkg/shared"
-	"github.com/anthdm/raptor/pkg/spidermonkey"
-	"github.com/anthdm/raptor/pkg/storage"
-	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/internal/runtime"
+	"github.com/anthdm/raptor/internal/shared"
+	"github.com/anthdm/raptor/internal/spidermonkey"
+	"github.com/anthdm/raptor/internal/storage"
+	"github.com/anthdm/raptor/internal/types"
 	"github.com/anthdm/raptor/proto"
 	"github.com/google/uuid"
 	"github.com/tetratelabs/wazero"
@@ -26,19 +26,17 @@ const KindRuntime = "runtime"
 
 // Runtime is an actor that can execute compiled WASM blobs in a distributed cluster.
 type Runtime struct {
-	store       storage.Store
-	metricStore storage.MetricStore
-	cache       storage.ModCacher
-	started     time.Time
-	deployID    uuid.UUID
+	store    storage.Store
+	cache    storage.ModCacher
+	started  time.Time
+	deployID uuid.UUID
 }
 
-func NewRuntime(store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) actor.Producer {
+func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		return &Runtime{
-			store:       store,
-			metricStore: metricStore,
-			cache:       cache,
+			store: store,
+			cache: cache,
 		}
 	}
 }
@@ -119,19 +117,19 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 
 	ctx.Engine().Poison(ctx.PID())
 
-	// only store metrics when its a request on LIVE
+	// only send metrics when its a request on LIVE
 	if !msg.Preview {
 		metric := types.RuntimeMetric{
-			ID:         uuid.New(),
-			StartTime:  r.started,
-			Duration:   time.Since(r.started),
-			DeployID:   deploy.ID,
-			EndpointID: deploy.EndpointID,
-			RequestURL: msg.URL,
+			ID:           uuid.New(),
+			StartTime:    r.started,
+			Duration:     time.Since(r.started),
+			DeploymentID: deploy.ID,
+			EndpointID:   deploy.EndpointID,
+			RequestURL:   msg.URL,
+			StatusCode:   status,
 		}
-		if err := r.metricStore.CreateRuntimeMetric(&metric); err != nil {
-			slog.Warn("failed to create runtime metric", "err", err)
-		}
+		pid := ctx.Engine().Registry.GetPID(KindMetric, "1")
+		ctx.Send(pid, metric)
 	}
 }
 

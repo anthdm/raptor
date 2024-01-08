@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/anthdm/raptor/pkg/api"
-	"github.com/anthdm/raptor/pkg/client"
-	"github.com/anthdm/raptor/pkg/config"
-	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/internal/api"
+	"github.com/anthdm/raptor/internal/client"
+	"github.com/anthdm/raptor/internal/config"
+	"github.com/anthdm/raptor/internal/types"
 	"github.com/google/uuid"
 )
 

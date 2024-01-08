@@ -7,8 +7,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/anthdm/raptor/pkg/api"
-	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/internal/api"
+	"github.com/anthdm/raptor/internal/types"
 	"github.com/google/uuid"
 )
 

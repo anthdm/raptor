@@ -7,9 +7,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/anthdm/raptor/pkg/config"
-	"github.com/anthdm/raptor/pkg/storage"
-	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/internal/config"
+	"github.com/anthdm/raptor/internal/storage"
+	"github.com/anthdm/raptor/internal/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )

@@ -7,8 +7,8 @@ import (
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
-	"github.com/anthdm/raptor/pkg/shared"
-	"github.com/anthdm/raptor/pkg/storage"
+	"github.com/anthdm/raptor/internal/shared"
+	"github.com/anthdm/raptor/internal/storage"
 	"github.com/anthdm/raptor/proto"
 	"github.com/google/uuid"
 )

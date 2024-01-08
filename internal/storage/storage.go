@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/internal/types"
 	"github.com/google/uuid"
 )
 

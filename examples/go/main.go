@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	run "github.com/anthdm/raptor/sdk"
+	raptor "github.com/anthdm/raptor/sdk"
 	"github.com/go-chi/chi"
 )
 
@@ -21,5 +21,5 @@ func main() {
 	router := chi.NewMux()
 	router.Get("/dashboard", handleDashboard)
 	router.Get("/login", handleLogin)
-	run.Handle(router)
+	raptor.Handle(router)
 }

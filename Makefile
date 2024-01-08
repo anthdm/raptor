@@ -12,7 +12,7 @@ api: build
 	@./bin/api --seed
 
 test:
-	@go test ./pkg/* -v
+	@go test ./internal/* -v
 
 proto:
 	protoc --go_out=. --go_opt=paths=source_relative --proto_path=. proto/types.proto

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anthdm/raptor/pkg/types"
+	"github.com/anthdm/raptor/internal/types"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
