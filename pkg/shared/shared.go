@@ -42,7 +42,7 @@ func trimmedEndpointFromURL(url *url.URL) string {
 	if len(pathParts) == 0 {
 		return "/"
 	}
-	return "/" + strings.Join(pathParts[1:], "/")
+	return "/" + strings.Join(pathParts[2:], "/")
 }
 
 func makeProtoHeader(header http.Header) map[string]*proto.HeaderFields {

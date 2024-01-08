@@ -147,7 +147,7 @@ func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) erro
 }
 
 // PublishParams holds all the necessary fields to publish a specific
-// deployment to your application.
+// deployment LIVE to your application.
 type PublishParams struct {
 	DeploymentID uuid.UUID `json:"deployment_id"`
 }
