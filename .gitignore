@@ -2,4 +2,4 @@ bin
 config.toml
 .db
 .modcache
-*.wasm
+examples/*/*.wasm
