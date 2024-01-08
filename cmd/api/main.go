@@ -69,7 +69,6 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 
 	deploy := types.NewDeployment(endpoint, b)
 	endpoint.ActiveDeploymentID = deploy.ID
-	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
 	endpoint.DeploymentHistory = append(endpoint.DeploymentHistory, &types.DeploymentHistory{
 		ID:        deploy.ID,
 		CreatedAT: deploy.CreatedAT,
@@ -82,7 +81,7 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("endpoint seeded: %s\n", endpoint.URL)
+	fmt.Printf("endpoint seeded: %s/live/%s\n", config.GetWasmUrl(), endpoint.ID)
 }
 
 func compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) {

@@ -19,7 +19,6 @@ func ValidRuntime(runtime string) bool {
 type Endpoint struct {
 	ID                 uuid.UUID            `json:"id"`
 	Name               string               `json:"name"`
-	URL                string               `json:"url"`
 	Runtime            string               `json:"runtime"`
 	ActiveDeploymentID uuid.UUID            `json:"active_deployment_id"`
 	Environment        map[string]string    `json:"environment"`
@@ -41,7 +40,6 @@ func NewEndpoint(name string, runtime string, env map[string]string) *Endpoint {
 		Name:              name,
 		Environment:       env,
 		Runtime:           runtime,
-		URL:               "",
 		DeploymentHistory: []*DeploymentHistory{},
 		CreatedAT:         time.Now(),
 	}

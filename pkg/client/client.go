@@ -40,12 +40,12 @@ func New(config Config) *Client {
 	}
 }
 
-func (c *Client) RollbackEndpoint(endpointID uuid.UUID, params api.CreateRollbackParams) (*api.CreateRollbackResponse, error) {
+func (c *Client) Publish(params api.PublishParams) (*api.PublishResponse, error) {
 	b, err := json.Marshal(params)
 	if err != nil {
 		return nil, err
 	}
-	url := fmt.Sprintf("%s/endpoint/%s/rollback", c.config.url, endpointID)
+	url := fmt.Sprintf("%s/publish/%s", c.config.url, params.DeploymentID)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return nil, err
@@ -58,12 +58,12 @@ func (c *Client) RollbackEndpoint(endpointID uuid.UUID, params api.CreateRollbac
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("api responded with a non 200 status code: %d", resp.StatusCode)
 	}
-	var rollbackResponse api.CreateRollbackResponse
-	if err := json.NewDecoder(resp.Body).Decode(&rollbackResponse); err != nil {
+	var publishResponse api.PublishResponse
+	if err := json.NewDecoder(resp.Body).Decode(&publishResponse); err != nil {
 		return nil, err
 	}
 	resp.Body.Close()
-	return &rollbackResponse, nil
+	return &publishResponse, nil
 }
 
 func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoint, error) {
@@ -93,7 +93,7 @@ func (c *Client) CreateEndpoint(params api.CreateEndpointParams) (*types.Endpoin
 }
 
 func (c *Client) CreateDeployment(endpointID uuid.UUID, blob io.Reader, params api.CreateDeploymentParams) (*types.Deployment, error) {
-	url := fmt.Sprintf("%s/endpoint/%s/deploy", c.config.url, endpointID)
+	url := fmt.Sprintf("%s/endpoint/%s/deployment", c.config.url, endpointID)
 	req, err := http.NewRequest("POST", url, blob)
 	if err != nil {
 		return nil, err

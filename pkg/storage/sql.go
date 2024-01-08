@@ -41,8 +41,8 @@ func NewSQLStore(user, password, dbname, host, port, sslmode string) (*SQLStore,
 
 func (s *SQLStore) CreateEndpoint(endpoint *types.Endpoint) error {
 	stmt := `
-INSERT INTO endpoint (id, name, url, runtime, environment, created_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO endpoint (id, name, runtime, environment, created_at)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id`
 	b, err := json.Marshal(endpoint.Environment)
 	if err != nil {
@@ -51,7 +51,6 @@ RETURNING id`
 	_, err = s.db.Exec(stmt,
 		endpoint.ID,
 		endpoint.Name,
-		endpoint.URL,
 		endpoint.Runtime,
 		b,
 		endpoint.CreatedAT)
@@ -168,7 +167,6 @@ func scanEndpoint(s Scanner, e *types.Endpoint) error {
 	err := s.Scan(
 		&e.ID,
 		&e.Name,
-		&e.URL,
 		&e.Runtime,
 		&envData,
 		&e.CreatedAT,
@@ -184,7 +182,6 @@ var createAllTablesQuery = `
 CREATE TABLE if not exists endpoint (
 	id UUID primary key, 
 	name text not null,
-	url text not null,
 	runtime text not null,
 	environment jsonb,
 	created_at timestamp not null default now()

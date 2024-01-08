@@ -129,6 +129,7 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Runtime = endpoint.Runtime
 		req.EndpointID = endpointID.String()
+		// When serving LIVE endpoints we use the active deployment id.
 		req.DeploymentID = endpoint.ActiveDeploymentID.String()
 		req.Env = endpoint.Environment
 		req.Preview = false
@@ -151,7 +152,9 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Runtime = endpoint.Runtime
 		req.EndpointID = endpoint.ID.String()
-		req.DeploymentID = endpoint.ActiveDeploymentID.String()
+		// When serving PREVIEW endpoints, we just use the deployment id from the
+		// request.
+		req.DeploymentID = deploy.ID.String()
 		req.Env = endpoint.Environment
 		req.Preview = true
 	}

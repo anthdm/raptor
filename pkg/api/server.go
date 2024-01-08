@@ -48,7 +48,7 @@ func (s *Server) initRouter() {
 	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deployment", makeAPIHandler(s.handleCreateDeployment))
-	s.router.Post("/endpoint/{id}/rollback", makeAPIHandler(s.handleCreateRollback))
+	s.router.Post("/publish/{id}", makeAPIHandler(s.handlePublish))
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -96,7 +96,6 @@ func (s *Server) handleCreateEndpoint(w http.ResponseWriter, r *http.Request) er
 	}
 
 	endpoint := types.NewEndpoint(params.Name, params.Runtime, params.Environment)
-	endpoint.URL = config.GetWasmUrl() + "/" + endpoint.ID.String()
 	if err := s.store.CreateEndpoint(endpoint); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
@@ -147,53 +146,56 @@ func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) erro
 	return writeJSON(w, http.StatusOK, endpoints)
 }
 
-// CreateRollbackParams holds all the necessary fields to rollback your application
-// to a specific deploy id (version).
-type CreateRollbackParams struct {
-	DeployID uuid.UUID `json:"deploy_id"`
+// PublishParams holds all the necessary fields to publish a specific
+// deployment to your application.
+type PublishParams struct {
+	DeploymentID uuid.UUID `json:"deployment_id"`
 }
 
-type CreateRollbackResponse struct {
-	DeployID uuid.UUID `json:"deploy_id"`
+type PublishResponse struct {
+	DeploymentID uuid.UUID `json:"deployment_id"`
+	URL          string    `json:"url"`
 }
 
-func (s *Server) handleCreateRollback(w http.ResponseWriter, r *http.Request) error {
-	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
+func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) error {
+	deployID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	endpoint, err := s.store.GetEndpoint(endpointID)
+	deploy, err := s.store.GetDeployment(deployID)
+	if err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	endpoint, err := s.store.GetEndpoint(deploy.EndpointID)
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
 	currentDeploymentID := endpoint.ActiveDeploymentID
 
-	var params CreateRollbackParams
+	var params PublishParams
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
-	if currentDeploymentID.String() == params.DeployID.String() {
-		err := fmt.Errorf("deploy %s already active", params.DeployID)
+	if currentDeploymentID.String() == params.DeploymentID.String() {
+		err := fmt.Errorf("deploy %s already active", params.DeploymentID)
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
-	}
-
-	deploy, err := s.store.GetDeployment(params.DeployID)
-	if err != nil {
-		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 
 	updateParams := storage.UpdateEndpointParams{
 		ActiveDeployID: deploy.ID,
 	}
-	if err := s.store.UpdateEndpoint(endpointID, updateParams); err != nil {
+	if err := s.store.UpdateEndpoint(deploy.EndpointID, updateParams); err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 
 	s.cache.Delete(currentDeploymentID)
 
-	resp := CreateRollbackResponse{DeployID: deploy.ID}
+	resp := PublishResponse{
+		DeploymentID: deploy.ID,
+		URL:          fmt.Sprintf("%s/live/%s", config.GetWasmUrl(), endpoint.ID),
+	}
 	return writeJSON(w, http.StatusOK, resp)
 }
 

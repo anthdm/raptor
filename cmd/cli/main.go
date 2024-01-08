@@ -18,23 +18,15 @@ import (
 
 func printUsage() {
 	fmt.Printf(`
-Usage: raptor [OPTIONS] COMMAND
+Raptor cli v0.0.1
 
-Options:
---env			Set and environment variable [--env foo=bar]
---config		Set the configuration path [--config path/to/config.toml] 
---runtime		Set the runtime of your application [--runtime go or js]
+Usage: raptor COMMAND
 
 Commands:
-endpoint		Create a new endpoint [options... endpoint "myendpoint"]
-test			Test your application [options... test "path/to/app.wasm(js)"]
-
-Subcommands:
-create 			Create a new endpoint [options... endpoint create "myendpoint"]
-list			List current endpoints
-
-deploy			Deploy an app to the cloud [deploy <endpointID path/to/app.wasm>]
-help			Show usage
+  endpoint			Create a new endpoint
+  publish			Publish a specific deployment to your applications endpoint
+  deploy			Create a new deployment
+  help				Show usage
 
 `)
 	os.Exit(0)
@@ -51,23 +43,13 @@ func (l *stringList) String() string {
 	return strings.Join(*l, ":")
 }
 
-var (
-	env        stringList
-	endpointID string
-	configFile string
-	runtime    string
-	addr       string
-)
-
 func main() {
 	flagset := flag.NewFlagSet("cli", flag.ExitOnError)
-	flagset.Usage = printUsage
-	flagset.StringVar(&endpointID, "endpoint", "", "")
-	flagset.StringVar(&configFile, "config", "config.toml", "")
-	flagset.StringVar(&addr, "addr", ":3000", "")
-	flagset.StringVar(&runtime, "runtime", "", "")
 
-	flagset.Var(&env, "env", "")
+	var configFile string
+	flagset.StringVar(&configFile, "config", "config.toml", "The location of your raptor config file")
+
+	flagset.Usage = printUsage
 	flagset.Parse(os.Args[1:])
 
 	if err := config.Parse(configFile); err != nil {
@@ -85,24 +67,11 @@ func main() {
 	}
 
 	switch args[0] {
+	case "publish":
+		command.handlePublish(args[1:])
 	case "endpoint":
-		if len(args) < 2 {
-			printUsage()
-		}
-		switch args[1] {
-		case "rollback":
-			command.handleRollback(args)
-		case "create":
-			command.handleCreateEndpoint(args)
-		case "list":
-			command.handleListEndpoints(args)
-		default:
-			printUsage()
-		}
+		command.handleEndpoint(args[1:])
 	case "deploy":
-		if len(args) < 2 {
-			printUsage()
-		}
 		command.handleDeploy(args[1:])
 	case "serve":
 		if len(args) < 2 {
@@ -120,21 +89,20 @@ type command struct {
 	client *client.Client
 }
 
-// endpoint rollback <endpointID> <deployID>
-func (c command) handleRollback(args []string) {
-	if len(args) != 4 {
-		printUsage()
-	}
-	endpointID, err := uuid.Parse(args[2])
+func (c command) handlePublish(args []string) {
+	flagset := flag.NewFlagSet("endpoint", flag.ExitOnError)
+
+	var deployID string
+	flagset.StringVar(&deployID, "deploy", "", "The id of the deployment that you want to publish LIVE")
+	_ = flagset.Parse(args)
+
+	id, err := uuid.Parse(deployID)
 	if err != nil {
 		printErrorAndExit(err)
 	}
-	deployID, err := uuid.Parse(args[3])
-	if err != nil {
-		printErrorAndExit(err)
-	}
-	params := api.CreateRollbackParams{DeployID: deployID}
-	resp, err := c.client.RollbackEndpoint(endpointID, params)
+
+	params := api.PublishParams{DeploymentID: id}
+	resp, err := c.client.Publish(params)
 	if err != nil {
 		printErrorAndExit(err)
 	}
@@ -145,28 +113,28 @@ func (c command) handleRollback(args []string) {
 	fmt.Println(string(b))
 }
 
-func (c command) handleListEndpoints(args []string) {
-	endpoints, err := c.client.ListEndpoints()
-	if err != nil {
-		printErrorAndExit(err)
-	}
-	b, err := json.MarshalIndent(endpoints, "", "    ")
-	if err != nil {
-		printErrorAndExit(err)
-	}
-	fmt.Println(string(b))
-}
+func (c command) handleEndpoint(args []string) {
+	flagset := flag.NewFlagSet("endpoint", flag.ExitOnError)
 
-func (c command) handleCreateEndpoint(args []string) {
-	if len(args) != 3 {
-		printUsage()
-	}
+	var name string
+	flagset.StringVar(&name, "name", "", "The name of your endpoint")
+	var runtime string
+	flagset.StringVar(&runtime, "runtime", "", "The runtime of your endpoint (go or js)")
+	var env stringList
+	flagset.Var(&env, "env", "Environment variables for this endpoint")
+	_ = flagset.Parse(args)
+
 	if !types.ValidRuntime(runtime) {
-		printUsage()
+		fmt.Printf("invalid runtime %s, only go and js are currently supported\n", runtime)
+		os.Exit(1)
+	}
+	if len(name) == 0 {
+		fmt.Println("The name of the endpoint is not provided. --name <name>")
+		os.Exit(1)
 	}
 	params := api.CreateEndpointParams{
 		Runtime:     runtime,
-		Name:        args[2],
+		Name:        name,
 		Environment: makeEnvMap(env),
 	}
 	endpoint, err := c.client.CreateEndpoint(params)
@@ -181,14 +149,19 @@ func (c command) handleCreateEndpoint(args []string) {
 }
 
 func (c command) handleDeploy(args []string) {
-	if len(args) != 2 {
-		printUsage()
-	}
-	id, err := uuid.Parse(args[0])
+	flagset := flag.NewFlagSet("deploy", flag.ExitOnError)
+
+	var endpointID string
+	flagset.StringVar(&endpointID, "endpoint", "", "The id of the endpoint to where you want to deploy")
+	var file string
+	flagset.StringVar(&file, "file", "", "The file location of your code that you want to deploy")
+	_ = flagset.Parse(args)
+
+	id, err := uuid.Parse(endpointID)
 	if err != nil {
 		printErrorAndExit(fmt.Errorf("invalid endpoint id given: %s", args[0]))
 	}
-	b, err := os.ReadFile(args[1])
+	b, err := os.ReadFile(file)
 	if err != nil {
 		printErrorAndExit(err)
 	}
@@ -202,53 +175,11 @@ func (c command) handleDeploy(args []string) {
 	}
 	fmt.Println(string(b))
 	fmt.Println()
-	fmt.Printf("deploy is live on: %s/%s\n", config.GetWasmUrl(), deploy.EndpointID)
+	fmt.Printf("deploy preview: %s/preview/%s\n", config.GetWasmUrl(), deploy.ID)
 }
 
 func (c command) handleServeEndpoint(args []string) {
 	fmt.Println("TODO")
-	// b, err := os.ReadFile(args[0])
-	// if err != nil {
-	// 	printErrorAndExit(err)
-	// }
-
-	// out := &bytes.Buffer{}
-
-	// http.ListenAndServe(addr, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	if r.URL.Path == "/favicon.ico" {
-	// 		return
-	// 	}
-	// 	preq, err := shared.MakeProtoRequest(uuid.NewString(), r)
-	// 	if err != nil {
-	// 		w.Write([]byte(err.Error()))
-	// 		return
-	// 	}
-	// 	fmt.Println(preq)
-	// 	reqb, err := proto.Marshal(preq)
-	// 	if err != nil {
-	// 		w.Write([]byte(err.Error()))
-	// 		return
-	// 	}
-
-	// 	invokeArgs := run.InvokeArgs{
-	// 		Blob: b,
-	// 		Out:  out,
-	// 		In:   bytes.NewBuffer(reqb),
-	// 	}
-
-	// 	if err := run.Invoke(r.Context(), invokeArgs); err != nil {
-	// 		w.Write([]byte(err.Error()))
-	// 		return
-	// 	}
-
-	// 	resp, status, err := shared.ParseRuntimeHTTPResponse(out.String())
-	// 	if err != nil {
-	// 		w.Write([]byte(err.Error()))
-	// 		return
-	// 	}
-	// 	w.WriteHeader(status)
-	// 	w.Write([]byte(resp))
-	// }))
 }
 
 func makeEnvMap(list []string) map[string]string {
