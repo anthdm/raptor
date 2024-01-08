@@ -10,8 +10,9 @@ message HTTPRequest {
 	string ID = 5;
 	map<string, HeaderFields> Header = 6;
 	string runtime = 7;
-	string activeDeployID = 8;
+	string DeployID = 8;
 	map<string, string> Env = 9;
+	bool preview = 10;
 } 
 
 message HeaderFields {

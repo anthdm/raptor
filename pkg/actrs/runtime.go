@@ -55,7 +55,7 @@ func (r *Runtime) Receive(c *actor.Context) {
 }
 
 func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) {
-	r.deployID = uuid.MustParse(msg.ActiveDeployID)
+	r.deployID = uuid.MustParse(msg.DeployID)
 	deploy, err := r.store.GetDeploy(r.deployID)
 	if err != nil {
 		slog.Warn("runtime could not find the endpoint's active deploy from store", "err", err)
@@ -118,16 +118,20 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	r.cache.Put(deploy.EndpointID, modCache)
 
 	ctx.Engine().Poison(ctx.PID())
-	metric := types.RuntimeMetric{
-		ID:         uuid.New(),
-		StartTime:  r.started,
-		Duration:   time.Since(r.started),
-		DeployID:   deploy.ID,
-		EndpointID: deploy.EndpointID,
-		RequestURL: msg.URL,
-	}
-	if err := r.metricStore.CreateRuntimeMetric(&metric); err != nil {
-		slog.Warn("failed to create runtime metric", "err", err)
+
+	// only store metrics when its a request on LIVE
+	if !msg.Preview {
+		metric := types.RuntimeMetric{
+			ID:         uuid.New(),
+			StartTime:  r.started,
+			Duration:   time.Since(r.started),
+			DeployID:   deploy.ID,
+			EndpointID: deploy.EndpointID,
+			RequestURL: msg.URL,
+		}
+		if err := r.metricStore.CreateRuntimeMetric(&metric); err != nil {
+			slog.Warn("failed to create runtime metric", "err", err)
+		}
 	}
 }
 

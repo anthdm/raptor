@@ -85,28 +85,21 @@ func (s *WasmServer) sendRequestToRuntime(req *proto.HTTPRequest) {
 	s.cluster.Engine().SendWithSender(pid, req, s.self)
 }
 
+// TODO(anthdm): Handle the favicon.ico
 func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/")
+	path = strings.TrimSuffix(path, "/")
 	pathParts := strings.Split(path, "/")
-	if len(pathParts) == 0 {
-		writeResponse(w, http.StatusBadRequest, []byte("invalid endpoint id given"))
+
+	if len(pathParts) < 2 {
+		writeResponse(w, http.StatusBadRequest, []byte("invalid request url"))
 		return
 	}
-	id := pathParts[0]
-	endpointID, err := uuid.Parse(id)
-	if err != nil {
-		writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
+	if pathParts[0] != "live" && pathParts[0] != "preview" {
+		writeResponse(w, http.StatusBadRequest, []byte("invalid request url"))
 		return
 	}
-	endpoint, err := s.store.GetEndpoint(endpointID)
-	if err != nil {
-		writeResponse(w, http.StatusNotFound, []byte(err.Error()))
-		return
-	}
-	if !endpoint.HasActiveDeploy() {
-		writeResponse(w, http.StatusNotFound, []byte("endpoint does not have an active deploy yet"))
-		return
-	}
+
 	requestID := uuid.NewString()
 	r.Header.Set("x-request-id", requestID)
 	req, err := shared.MakeProtoRequest(requestID, r)
@@ -114,12 +107,56 @@ func (s *WasmServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, http.StatusInternalServerError, []byte(err.Error()))
 		return
 	}
-	req.Runtime = endpoint.Runtime
-	req.EndpointID = endpointID.String()
-	req.ActiveDeployID = endpoint.ActiveDeployID.String()
-	req.Env = endpoint.Environment
-	reqres := newRequestWithResponse(req)
 
+	if err != nil {
+		writeResponse(w, http.StatusInternalServerError, []byte(err.Error()))
+		return
+	}
+	if pathParts[0] == "live" {
+		endpointID, err := uuid.Parse(pathParts[1])
+		if err != nil {
+			writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
+			return
+		}
+		endpoint, err := s.store.GetEndpoint(endpointID)
+		if err != nil {
+			writeResponse(w, http.StatusNotFound, []byte(err.Error()))
+			return
+		}
+		if !endpoint.HasActiveDeploy() {
+			writeResponse(w, http.StatusNotFound, []byte("endpoint does not have any published deploy"))
+			return
+		}
+		req.Runtime = endpoint.Runtime
+		req.EndpointID = endpointID.String()
+		req.DeployID = endpoint.ActiveDeployID.String()
+		req.Env = endpoint.Environment
+		req.Preview = false
+	}
+	if pathParts[0] == "preview" {
+		deployID, err := uuid.Parse(pathParts[1])
+		if err != nil {
+			writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
+			return
+		}
+		deploy, err := s.store.GetDeploy(deployID)
+		if err != nil {
+			writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
+			return
+		}
+		endpoint, err := s.store.GetEndpoint(deploy.EndpointID)
+		if err != nil {
+			writeResponse(w, http.StatusBadRequest, []byte(err.Error()))
+			return
+		}
+		req.Runtime = endpoint.Runtime
+		req.EndpointID = endpoint.ID.String()
+		req.DeployID = endpoint.ActiveDeployID.String()
+		req.Env = endpoint.Environment
+		req.Preview = true
+	}
+
+	reqres := newRequestWithResponse(req)
 	s.cluster.Engine().Send(s.self, reqres)
 
 	resp := <-reqres.response
