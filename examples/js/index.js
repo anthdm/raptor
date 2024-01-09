@@ -15,7 +15,7 @@ function generateEndHex(length, status) {
 }
 
 function respond(res, status) {
-  endHex = generateEndHex(res.length, status);
+  var endHex = generateEndHex(res.length, status);
   //using putstr because console.log adds "\n" to the end
   putstr(res + endHex);
 }
