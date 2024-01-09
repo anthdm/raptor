@@ -81,7 +81,7 @@ func (s *WasmServer) initialize(c *actor.Context) {
 }
 
 func (s *WasmServer) sendRequestToRuntime(req *proto.HTTPRequest) {
-	pid := s.cluster.Activate(KindRuntime, &cluster.ActivationConfig{})
+	pid := s.cluster.Activate(KindRuntime, cluster.NewActivationConfig())
 	s.cluster.Engine().SendWithSender(pid, req, s.self)
 }
 

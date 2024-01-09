@@ -16,7 +16,7 @@ apiToken			= "foobarbaz"
 authorization		= false
 
 [cluster]
-addr 				= "localhost:6666"
+address 			= "localhost:6666"
 id					= "wasm_member_1" 
 region				= "eu-west"
 
@@ -42,9 +42,9 @@ type Storage struct {
 }
 
 type Cluster struct {
-	WasmMemberAddr string
-	ID             string
-	Region         string
+	Address string
+	ID      string
+	Region  string
 }
 
 type Config struct {
