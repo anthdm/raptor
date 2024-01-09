@@ -53,6 +53,7 @@ func main() {
 	}
 	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, modCache), &cluster.KindConfig{})
 	c.Engine().Spawn(actrs.NewMetric, actrs.KindMetric, actor.WithID("1"))
+	c.Engine().Spawn(actrs.NewRuntimeManager(c), actrs.KindRuntimeManager, actor.WithID("1"))
 	c.Start()
 
 	server := actrs.NewWasmServer(
