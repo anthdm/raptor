@@ -1,24 +1,33 @@
 package shared
 
 import (
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/anthdm/raptor/proto"
 )
 
+var errInvalidHTTPResponse = errors.New("invalid HTTP response")
+
 func ParseRuntimeHTTPResponse(in string) (resp string, status int, err error) {
-	lines := strings.Split(in, "\n")
-	if len(lines) < 3 {
-		err = fmt.Errorf("invalid response")
+	if len(in) < 16 {
+		err = fmt.Errorf("misformed HTTP response missing last 16 bytes")
 		return
 	}
-	resp = lines[len(lines)-3]
-	status, err = strconv.Atoi(lines[len(lines)-2])
+	var b []byte
+	b, err = hex.DecodeString(in[len(in)-16:])
+	if err != nil {
+		err = errInvalidHTTPResponse
+	}
+	status = int(binary.LittleEndian.Uint32(b[0:4]))
+	respLen := binary.LittleEndian.Uint32(b[4:8])
+	resp = in[len(in)-16-int(respLen) : len(in)-16]
 	return
 }
 

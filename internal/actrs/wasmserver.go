@@ -2,8 +2,10 @@ package actrs
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
@@ -29,24 +31,26 @@ func newRequestWithResponse(request *proto.HTTPRequest) requestWithResponse {
 
 // WasmServer is an HTTP server that will proxy and route the request to the corresponding function.
 type WasmServer struct {
-	server      *http.Server
-	self        *actor.PID
-	store       storage.Store
-	metricStore storage.MetricStore
-	cache       storage.ModCacher
-	cluster     *cluster.Cluster
-	responses   map[string]chan *proto.HTTPResponse
+	server         *http.Server
+	self           *actor.PID
+	store          storage.Store
+	metricStore    storage.MetricStore
+	cache          storage.ModCacher
+	cluster        *cluster.Cluster
+	responses      map[string]chan *proto.HTTPResponse
+	runtimeManager *actor.PID
 }
 
 // NewWasmServer return a new wasm server given a storage and a mod cache.
 func NewWasmServer(addr string, cluster *cluster.Cluster, store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		s := &WasmServer{
-			store:       store,
-			metricStore: metricStore,
-			cache:       cache,
-			cluster:     cluster,
-			responses:   make(map[string]chan *proto.HTTPResponse),
+			store:          store,
+			metricStore:    metricStore,
+			cache:          cache,
+			cluster:        cluster,
+			responses:      make(map[string]chan *proto.HTTPResponse),
+			runtimeManager: cluster.Engine().Registry.GetPID(KindRuntimeManager, "1"),
 		}
 		server := &http.Server{
 			Handler: s,
@@ -64,7 +68,14 @@ func (s *WasmServer) Receive(c *actor.Context) {
 	case actor.Stopped:
 	case requestWithResponse:
 		s.responses[msg.request.ID] = msg.response
-		s.sendRequestToRuntime(msg.request)
+		// TODO: let's say the manager is not able to respond in time for some reason
+		// I think we might need to spawn a new runtime right here.
+		pid := s.requestRuntime(c, msg.request.DeploymentID)
+		if pid == nil {
+			slog.Error("failed to request a runtime PID")
+			return
+		}
+		s.cluster.Engine().SendWithSender(pid, msg.request, s.self)
 	case *proto.HTTPResponse:
 		if resp, ok := s.responses[msg.RequestID]; ok {
 			resp <- msg
@@ -80,9 +91,22 @@ func (s *WasmServer) initialize(c *actor.Context) {
 	}()
 }
 
-func (s *WasmServer) sendRequestToRuntime(req *proto.HTTPRequest) {
-	pid := s.cluster.Activate(KindRuntime, &cluster.ActivationConfig{})
-	s.cluster.Engine().SendWithSender(pid, req, s.self)
+// NOTE: There could be a case where we do not get a response in time, hence
+// the PID will be nil. This case is handled where we should spawn the runtime
+// ourselfs.
+func (s *WasmServer) requestRuntime(c *actor.Context, key string) *actor.PID {
+	res, err := c.Request(s.runtimeManager, requestRuntime{
+		key: key,
+	}, time.Millisecond*5).Result()
+	if err != nil {
+		slog.Warn("runtime manager response failed", "err", err)
+		return nil
+	}
+	pid, ok := res.(*actor.PID)
+	if !ok {
+		slog.Warn("runtime manager responded with a non *actor.PID")
+	}
+	return pid
 }
 
 // TODO(anthdm): Handle the favicon.ico

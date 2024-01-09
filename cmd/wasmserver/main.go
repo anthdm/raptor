@@ -10,7 +10,6 @@ import (
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
-	"github.com/anthdm/hollywood/remote"
 	"github.com/anthdm/raptor/internal/actrs"
 	"github.com/anthdm/raptor/internal/config"
 	"github.com/anthdm/raptor/internal/storage"
@@ -44,21 +43,17 @@ func main() {
 		metricStore = store
 	)
 
-	remote := remote.New(config.Get().Cluster.WasmMemberAddr, nil)
-	engine, err := actor.NewEngine(&actor.EngineConfig{
-		Remote: remote,
-	})
+	clusterConfig := cluster.NewConfig().
+		WithListenAddr(config.Get().Cluster.Address).
+		WithRegion(config.Get().Cluster.Region).
+		WithID(config.Get().Cluster.ID)
+	c, err := cluster.New(clusterConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
-	c, err := cluster.New(cluster.Config{
-		Region:          config.Get().Cluster.Region,
-		Engine:          engine,
-		ID:              config.Get().Cluster.ID,
-		ClusterProvider: cluster.NewSelfManagedProvider(),
-	})
 	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, modCache), &cluster.KindConfig{})
 	c.Engine().Spawn(actrs.NewMetric, actrs.KindMetric, actor.WithID("1"))
+	c.Engine().Spawn(actrs.NewRuntimeManager(c), actrs.KindRuntimeManager, actor.WithID("1"))
 	c.Start()
 
 	server := actrs.NewWasmServer(

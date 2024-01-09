@@ -2,12 +2,13 @@ package run
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/anthdm/raptor/proto"
 	// _ "github.com/stealthrocket/net/http"
@@ -45,9 +46,12 @@ func Handle(h http.Handler) {
 		r.Header[k] = v.Fields
 	}
 	h.ServeHTTP(w, r) // execute the user's handler
-	out := strings.TrimRight(w.buffer.String(), "\n")
-	fmt.Println(out)
-	fmt.Println(w.statusCode)
+	fmt.Print(w.buffer.String())
+
+	buf := make([]byte, 8)
+	binary.LittleEndian.PutUint32(buf[0:4], uint32(w.statusCode))
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(w.buffer.Len()))
+	fmt.Print(hex.EncodeToString(buf))
 }
 
 type ResponseWriter struct {

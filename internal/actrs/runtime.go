@@ -12,7 +12,6 @@ import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/raptor/internal/runtime"
 	"github.com/anthdm/raptor/internal/shared"
-	"github.com/anthdm/raptor/internal/spidermonkey"
 	"github.com/anthdm/raptor/internal/storage"
 	"github.com/anthdm/raptor/internal/types"
 	"github.com/anthdm/raptor/proto"
@@ -24,19 +23,30 @@ import (
 
 const KindRuntime = "runtime"
 
+var (
+	runtimeKeepAlive = time.Second
+)
+
+type shutdown struct{}
+
 // Runtime is an actor that can execute compiled WASM blobs in a distributed cluster.
 type Runtime struct {
-	store    storage.Store
-	cache    storage.ModCacher
-	started  time.Time
-	deployID uuid.UUID
+	store        storage.Store
+	cache        storage.ModCacher
+	started      time.Time
+	deploymentID uuid.UUID
+	managerPID   *actor.PID
+	runtime      *runtime.Runtime
+	repeat       actor.SendRepeater
+	stdout       *bytes.Buffer
 }
 
 func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		return &Runtime{
-			store: store,
-			cache: cache,
+			store:  store,
+			cache:  cache,
+			stdout: &bytes.Buffer{},
 		}
 	}
 }
@@ -45,28 +55,62 @@ func (r *Runtime) Receive(c *actor.Context) {
 	switch msg := c.Message().(type) {
 	case actor.Started:
 		r.started = time.Now()
+		r.repeat = c.SendRepeat(c.PID(), shutdown{}, runtimeKeepAlive)
+		r.managerPID = c.Engine().Registry.GetPID(KindRuntimeManager, "1")
 	case actor.Stopped:
+		// TODO: send metrics about the runtime to the metric actor.
+		_ = time.Since(r.started)
+		c.Send(r.managerPID, removeRuntime{key: r.deploymentID.String()})
+		r.runtime.Close()
+		// Releasing this mod will invalidate the cache for some reason.
+		// r.mod.Close(context.TODO())
 	case *proto.HTTPRequest:
+		// Refresh the keepAlive timer
+		r.repeat = c.SendRepeat(c.PID(), shutdown{}, runtimeKeepAlive)
+		if r.runtime == nil {
+			r.initialize(msg)
+		}
 		// Handle the HTTP request that is forwarded from the WASM server actor.
 		r.handleHTTPRequest(c, msg)
+	case shutdown:
+		c.Engine().Poison(c.PID())
 	}
 }
 
-func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) {
-	r.deployID = uuid.MustParse(msg.DeploymentID)
-	deploy, err := r.store.GetDeployment(r.deployID)
+func (r *Runtime) initialize(msg *proto.HTTPRequest) error {
+	r.deploymentID = uuid.MustParse(msg.DeploymentID)
+	// TODO: this could be coming from a Redis cache instead of Postres.
+	// Maybe only the blob. Not sure...
+	deploy, err := r.store.GetDeployment(r.deploymentID)
 	if err != nil {
-		slog.Warn("runtime could not find deploy from store", "err", err, "id", r.deployID)
-		respondError(ctx, http.StatusInternalServerError, "internal server error", msg.ID)
-		return
+		return fmt.Errorf("runtime: could not find deployment (%s)", r.deploymentID)
 	}
 
-	modCache, ok := r.cache.Get(deploy.EndpointID)
+	modCache, ok := r.cache.Get(r.deploymentID)
 	if !ok {
+		slog.Warn("no cache hit", "endpoint", r.deploymentID)
 		modCache = wazero.NewCompilationCache()
-		slog.Warn("no cache hit", "endpoint", deploy.EndpointID)
 	}
 
+	args := runtime.Args{
+		Cache:        modCache,
+		DeploymentID: deploy.ID,
+		Blob:         deploy.Blob,
+		Engine:       msg.Runtime,
+		Stdout:       r.stdout,
+	}
+	run, err := runtime.New(context.Background(), args)
+	if err != nil {
+		return err
+	}
+	r.runtime = run
+	r.cache.Put(deploy.ID, modCache)
+
+	return nil
+}
+
+func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) {
+	start := time.Now()
 	b, err := prot.Marshal(msg)
 	if err != nil {
 		slog.Warn("failed to marshal incoming HTTP request", "err", err)
@@ -74,35 +118,21 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	in := bytes.NewReader(b)
-	out := &bytes.Buffer{}
-	args := runtime.InvokeArgs{
-		Env:   msg.Env,
-		In:    in,
-		Out:   out,
-		Cache: modCache,
+	var args []string = nil
+	if msg.Runtime == "js" {
+		args = []string{"", "-e", string(r.runtime.Blob())}
 	}
 
-	switch msg.Runtime {
-	case "go":
-		args.Blob = deploy.Blob
-	case "js":
-		args.Blob = spidermonkey.WasmBlob
-		args.Args = []string{"", "-e", string(deploy.Blob)}
-	default:
-		err = fmt.Errorf("invalid runtime: %s", msg.Runtime)
-	}
-
-	err = runtime.Invoke(context.Background(), args)
-	if err != nil {
-		slog.Error("runtime invoke error", "err", err)
+	req := bytes.NewReader(b)
+	if err := r.runtime.Invoke(req, msg.Env, args...); err != nil {
+		slog.Warn("runtime invoke error", "err", err)
 		respondError(ctx, http.StatusInternalServerError, "internal server error", msg.ID)
 		return
 	}
 
-	res, status, err := shared.ParseRuntimeHTTPResponse(out.String())
+	res, status, err := shared.ParseRuntimeHTTPResponse(r.stdout.String())
 	if err != nil {
-		respondError(ctx, http.StatusInternalServerError, "internal server error", msg.ID)
+		respondError(ctx, http.StatusInternalServerError, "invalid response", msg.ID)
 		return
 	}
 	resp := &proto.HTTPResponse{
@@ -112,21 +142,17 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	}
 
 	ctx.Respond(resp)
-
-	r.cache.Put(deploy.EndpointID, modCache)
-
-	ctx.Engine().Poison(ctx.PID())
+	r.stdout.Reset()
 
 	// only send metrics when its a request on LIVE
 	if !msg.Preview {
-		metric := types.RuntimeMetric{
+		metric := types.RequestMetric{
 			ID:           uuid.New(),
-			StartTime:    r.started,
-			Duration:     time.Since(r.started),
-			DeploymentID: deploy.ID,
-			EndpointID:   deploy.EndpointID,
-			RequestURL:   msg.URL,
-			StatusCode:   status,
+			Duration:     time.Since(start),
+			DeploymentID: r.deploymentID,
+			// EndpointID:   deploy.EndpointID,
+			RequestURL: msg.URL,
+			StatusCode: status,
 		}
 		pid := ctx.Engine().Registry.GetPID(KindMetric, "1")
 		ctx.Send(pid, metric)
