@@ -3,8 +3,6 @@ package run
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -46,12 +44,12 @@ func Handle(h http.Handler) {
 		r.Header[k] = v.Fields
 	}
 	h.ServeHTTP(w, r) // execute the user's handler
-	fmt.Print(w.buffer.String())
+	os.Stdout.Write(w.buffer.Bytes())
 
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint32(buf[0:4], uint32(w.statusCode))
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(w.buffer.Len()))
-	fmt.Print(hex.EncodeToString(buf))
+	os.Stdout.Write(buf)
 }
 
 type ResponseWriter struct {

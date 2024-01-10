@@ -140,7 +140,7 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	res, status, err := shared.ParseRuntimeHTTPResponse(r.stdout.String())
+	_, res, status, err := shared.ParseStdout(r.stdout)
 	if err != nil {
 		respondError(ctx, http.StatusInternalServerError, "invalid response", msg.ID)
 		return
