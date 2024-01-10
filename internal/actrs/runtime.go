@@ -140,7 +140,7 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	_, res, status, err := shared.ParseStdout(r.stdout)
+	logs, res, status, err := shared.ParseStdout(r.stdout)
 	if err != nil {
 		respondError(ctx, http.StatusInternalServerError, "invalid response", msg.ID)
 		return
@@ -154,7 +154,7 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	ctx.Respond(resp)
 	r.stdout.Reset()
 
-	// only send metrics when its a request on LIVE
+	// only send metrics and logs when its a request on LIVE
 	if !msg.Preview {
 		metric := types.RequestMetric{
 			ID:           uuid.New(),
@@ -164,8 +164,14 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 			RequestURL: msg.URL,
 			StatusCode: status,
 		}
-		pid := ctx.Engine().Registry.GetPID(KindMetric, "1")
-		ctx.Send(pid, metric)
+		metricPID := ctx.Engine().Registry.GetPID(KindMetric, "1")
+		ctx.Send(metricPID, metric)
+
+		runtimeLogPID := ctx.Engine().Registry.GetPID(KindRuntimeLog, "1")
+		runtimeLog := types.RuntimeLogEvent{
+			Data: logs,
+		}
+		ctx.Send(runtimeLogPID, runtimeLog)
 	}
 }
 
