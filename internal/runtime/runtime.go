@@ -2,7 +2,6 @@ package runtime
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -65,15 +64,4 @@ func (r *Runtime) Invoke(stdin io.Reader, env map[string]string, args ...string)
 
 func (r *Runtime) Close() error {
 	return r.runtime.Close(r.ctx)
-}
-
-func GetStdout(runtime string, stdout io.Reader) io.Reader {
-	switch runtime {
-	case "go":
-		return stdout
-	case "js":
-		return hex.NewDecoder(stdout)
-	default:
-		return stdout
-	}
 }
