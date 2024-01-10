@@ -1,6 +1,7 @@
 syntax = "proto3";
 package proto;
 option go_package = "github.com/anthdm/raptor/proto";
+import "actor.proto";
 
 message HTTPRequest {
 	bytes Body = 1;
@@ -23,4 +24,13 @@ message HTTPResponse {
 	bytes response = 1;
 	int32 statusCode = 2;
 	string RequestID = 3;
+}
+
+message AddRuntime {
+	string key = 1;
+	actor.PID PID = 2;
+}
+
+message RemoveRuntime {
+	string key = 1;
 }

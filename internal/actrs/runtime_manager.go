@@ -3,19 +3,13 @@ package actrs
 import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
+	"github.com/anthdm/raptor/proto"
 )
 
 const KindRuntimeManager = "runtime_manager"
 
 type (
 	requestRuntime struct {
-		key string
-	}
-	addRuntime struct {
-		key string
-		pid *actor.PID
-	}
-	removeRuntime struct {
 		key string
 	}
 )
@@ -43,10 +37,10 @@ func (rm *RuntimeManager) Receive(c *actor.Context) {
 			rm.runtimes[msg.key] = pid
 		}
 		c.Respond(pid)
-	case addRuntime:
-		rm.runtimes[msg.key] = msg.pid
-	case removeRuntime:
-		delete(rm.runtimes, msg.key)
+	case *proto.AddRuntime:
+		rm.runtimes[msg.Key] = msg.PID
+	case *proto.RemoveRuntime:
+		delete(rm.runtimes, msg.Key)
 	case actor.Started:
 	case actor.Stopped:
 	case actor.Initialized:

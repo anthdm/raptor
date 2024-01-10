@@ -46,9 +46,10 @@ type Runtime struct {
 func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		return &Runtime{
-			store:  store,
-			cache:  cache,
-			stdout: &bytes.Buffer{},
+			store:      store,
+			cache:      cache,
+			stdout:     &bytes.Buffer{},
+			managerPID: actor.NewPID("127.0.0.1:6666", "runtime_manager/1"),
 		}
 	}
 }
@@ -56,17 +57,21 @@ func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
 func (r *Runtime) Receive(c *actor.Context) {
 	switch msg := c.Message().(type) {
 	case actor.Started:
+		// eventPID := c.Engine().SpawnFunc(r.handleEvent, "event")
+		// c.Engine().Subscribe(eventPID)
+
 		r.started = time.Now()
 		r.repeat = c.SendRepeat(c.PID(), shutdown{}, runtimeKeepAlive)
 		r.managerPID = c.Engine().Registry.GetPID(KindRuntimeManager, "1")
 	case actor.Stopped:
 		// TODO: send metrics about the runtime to the metric actor.
 		_ = time.Since(r.started)
-		c.Send(r.managerPID, removeRuntime{key: r.deploymentID.String()})
+		c.Send(r.managerPID, &proto.RemoveRuntime{Key: r.deploymentID.String()})
 		r.runtime.Close()
 		// Releasing this mod will invalidate the cache for some reason.
 		// r.mod.Close(context.TODO())
 	case *proto.HTTPRequest:
+		slog.Info("runtime actor handling request", "request_id", msg.ID)
 		// Refresh the keepAlive timer
 		r.repeat = c.SendRepeat(c.PID(), shutdown{}, runtimeKeepAlive)
 		if r.runtime == nil {
@@ -78,6 +83,15 @@ func (r *Runtime) Receive(c *actor.Context) {
 		c.Engine().Poison(c.PID())
 	}
 }
+
+// func (r *Runtime) handleEvent(c *actor.Context) {
+// 	switch msg := c.Message().(type) {
+// 	case *actor.ActorStartedEvent:
+// 		fmt.Println(msg)
+// 	case actor.DeadLetterEvent:
+// 		fmt.Println(reflect.TypeOf(msg.Message))
+// 	}
+// }
 
 func (r *Runtime) initialize(msg *proto.HTTPRequest) error {
 	r.deploymentID = uuid.MustParse(msg.DeploymentID)
