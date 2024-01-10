@@ -42,7 +42,7 @@ func TestRuntimeInvokeJSCode(t *testing.T) {
 	scriptArgs := []string{"", "-e", string(b)}
 	require.Nil(t, r.Invoke(bytes.NewReader(breq), nil, scriptArgs...))
 
-	_, _, status, err := shared.ParseStdout(out)
+	_, _, status, err := shared.ParseStdout("js", out)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusOK, status)
 	require.Nil(t, r.Close())
@@ -71,7 +71,7 @@ func TestRuntimeInvokeGoCode(t *testing.T) {
 	r, err := New(context.Background(), args)
 	require.Nil(t, err)
 	require.Nil(t, r.Invoke(bytes.NewReader(breq), nil))
-	_, _, status, err := shared.ParseStdout(out)
+	_, _, status, err := shared.ParseStdout("go", out)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusOK, status)
 	require.Nil(t, r.Close())
