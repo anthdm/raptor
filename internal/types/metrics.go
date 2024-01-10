@@ -21,3 +21,9 @@ type RequestMetric struct {
 	Duration     time.Duration `json:"duration"`
 	StatusCode   int           `json:"status_code"`
 }
+
+// RuntimeLogEvent holds the logs that where written out
+// during runtime invocation of a script.
+type RuntimeLogEvent struct {
+	Data []byte
+}

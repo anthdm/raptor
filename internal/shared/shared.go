@@ -13,7 +13,33 @@ import (
 	"github.com/anthdm/raptor/proto"
 )
 
+const magicLen = 8
+
 var errInvalidHTTPResponse = errors.New("invalid HTTP response")
+
+func ParseStdout(runtime string, stdout io.Reader) (logs []byte, resp []byte, status int, err error) {
+	stdoutb, err := io.ReadAll(GetDecodedStdout(runtime, stdout))
+	if err != nil {
+		return
+	}
+	outLen := len(stdoutb)
+	if outLen < magicLen {
+		err = fmt.Errorf("mallformed HTTP response missing last %d bytes", magicLen)
+		return
+	}
+	magicStart := outLen - magicLen
+	status = int(binary.LittleEndian.Uint32(stdoutb[magicStart : magicStart+4]))
+	respLen := binary.LittleEndian.Uint32(stdoutb[magicStart+4:])
+	fmt.Println(status)
+	if int(respLen) > outLen-magicLen {
+		err = fmt.Errorf("response length exceeds available data")
+		return
+	}
+	respStart := outLen - magicLen - int(respLen)
+	resp = stdoutb[respStart : respStart+int(respLen)]
+	logs = stdoutb[:respStart]
+	return
+}
 
 func ParseRuntimeHTTPResponse(in string) (resp string, status int, err error) {
 	if len(in) < 16 {
@@ -62,4 +88,15 @@ func makeProtoHeader(header http.Header) map[string]*proto.HeaderFields {
 		}
 	}
 	return m
+}
+
+func GetDecodedStdout(runtime string, stdout io.Reader) io.Reader {
+	switch runtime {
+	case "go":
+		return stdout
+	case "js":
+		return hex.NewDecoder(stdout)
+	default:
+		return stdout
+	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	raptor "github.com/anthdm/raptor/sdk"
@@ -20,5 +21,6 @@ func main() {
 	// router := chi.NewMux()
 	// router.Get("/dashboard", handleDashboard)
 	// router.Get("/login", handleLogin)
+	fmt.Println("user log")
 	raptor.Handle(http.HandlerFunc(handleLogin))
 }

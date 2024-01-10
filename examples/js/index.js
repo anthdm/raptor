@@ -1,8 +1,32 @@
-// This should come from the official SDK. 
+// This should come from the official SDK.
 // But there is no official SDK yet, so we keep it here.
-function respond(res, status) {
-	console.log(res)
-	console.log(status)
+function hexLog(s) {
+    for (let i = 0; i < s.length; i++) {
+        putstr(s.charCodeAt(i).toString(16).padStart(2, "0"))
+    }
+    putstr("0a")
 }
+
+console.log = hexLog
+
+function respond(res, status) {
+    var buffer = new ArrayBuffer(8);
+    var view = new DataView(buffer);
+    view.setUint32(0, status, true);
+    view.setUint32(4, res.length, true);
+
+    for (let i = 0; i < res.length; i++) {
+        putstr(res.charCodeAt(i).toString(16).padStart(2, "0"))
+    }
+    for (let i = 0; i < view.buffer.byteLength; i++) {
+        putstr(view.getUint8(i).toString(16).padStart(2, "0"));
+    }
+}
+
+console.log("user log here")
+console.log("user log here")
+console.log("user log here")
+console.log("user log here")
+console.log("user log here")
 
 respond("<h1>From my Raptor application</h1></br>some other stuff here</br>", 200)

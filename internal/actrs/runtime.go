@@ -12,6 +12,7 @@ import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/raptor/internal/runtime"
 	"github.com/anthdm/raptor/internal/shared"
+	"github.com/anthdm/raptor/internal/spidermonkey"
 	"github.com/anthdm/raptor/internal/storage"
 	"github.com/anthdm/raptor/internal/types"
 	"github.com/anthdm/raptor/proto"
@@ -39,6 +40,7 @@ type Runtime struct {
 	runtime      *runtime.Runtime
 	repeat       actor.SendRepeater
 	stdout       *bytes.Buffer
+	script       []byte
 }
 
 func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
@@ -79,7 +81,7 @@ func (r *Runtime) Receive(c *actor.Context) {
 
 func (r *Runtime) initialize(msg *proto.HTTPRequest) error {
 	r.deploymentID = uuid.MustParse(msg.DeploymentID)
-	// TODO: this could be coming from a Redis cache instead of Postres.
+	// TODO: this could be coming from a Redis cache instead of Postgres.
 	// Maybe only the blob. Not sure...
 	deploy, err := r.store.GetDeployment(r.deploymentID)
 	if err != nil {
@@ -95,10 +97,18 @@ func (r *Runtime) initialize(msg *proto.HTTPRequest) error {
 	args := runtime.Args{
 		Cache:        modCache,
 		DeploymentID: deploy.ID,
-		Blob:         deploy.Blob,
 		Engine:       msg.Runtime,
 		Stdout:       r.stdout,
 	}
+
+	switch args.Engine {
+	case "js":
+		r.script = deploy.Blob
+		args.Blob = spidermonkey.WasmBlob
+	default:
+		args.Blob = deploy.Blob
+	}
+
 	run, err := runtime.New(context.Background(), args)
 	if err != nil {
 		return err
@@ -118,9 +128,9 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	var args []string = nil
+	args := []string{}
 	if msg.Runtime == "js" {
-		args = []string{"", "-e", string(r.runtime.Blob())}
+		args = []string{"", "-e", string(r.script)}
 	}
 
 	req := bytes.NewReader(b)
@@ -130,7 +140,7 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	res, status, err := shared.ParseRuntimeHTTPResponse(r.stdout.String())
+	logs, res, status, err := shared.ParseStdout(msg.Runtime, r.stdout)
 	if err != nil {
 		respondError(ctx, http.StatusInternalServerError, "invalid response", msg.ID)
 		return
@@ -144,7 +154,7 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 	ctx.Respond(resp)
 	r.stdout.Reset()
 
-	// only send metrics when its a request on LIVE
+	// only send metrics and logs when its a request on LIVE
 	if !msg.Preview {
 		metric := types.RequestMetric{
 			ID:           uuid.New(),
@@ -154,8 +164,14 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 			RequestURL: msg.URL,
 			StatusCode: status,
 		}
-		pid := ctx.Engine().Registry.GetPID(KindMetric, "1")
-		ctx.Send(pid, metric)
+		metricPID := ctx.Engine().Registry.GetPID(KindMetric, "1")
+		ctx.Send(metricPID, metric)
+
+		runtimeLogPID := ctx.Engine().Registry.GetPID(KindRuntimeLog, "1")
+		runtimeLog := types.RuntimeLogEvent{
+			Data: logs,
+		}
+		ctx.Send(runtimeLogPID, runtimeLog)
 	}
 }
 
