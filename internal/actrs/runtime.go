@@ -81,7 +81,7 @@ func (r *Runtime) Receive(c *actor.Context) {
 
 func (r *Runtime) initialize(msg *proto.HTTPRequest) error {
 	r.deploymentID = uuid.MustParse(msg.DeploymentID)
-	// TODO: this could be coming from a Redis cache instead of Postres.
+	// TODO: this could be coming from a Redis cache instead of Postgres.
 	// Maybe only the blob. Not sure...
 	deploy, err := r.store.GetDeployment(r.deploymentID)
 	if err != nil {

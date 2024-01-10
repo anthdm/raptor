@@ -30,6 +30,7 @@ func ParseStdout(stdout io.Reader) (logs []byte, resp []byte, status int, err er
 	magicStart := outLen - magicLen
 	status = int(binary.LittleEndian.Uint32(stdoutb[magicStart : magicStart+4]))
 	respLen := binary.LittleEndian.Uint32(stdoutb[magicStart+4:])
+	fmt.Println(status)
 	if int(respLen) > outLen-magicLen {
 		err = fmt.Errorf("response length exceeds available data")
 		return

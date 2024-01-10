@@ -8,8 +8,11 @@ function respond(res, status) {
   view.setUint32(4, res.length, true);
 
   var bytes = new Uint8Array(buffer);
+
   print(res)
-  print(bytes)
+  for (let i = 0; i < bytes.length; i++) {
+    putstr(String.fromCharCode(bytes[i]))
+  }
 }
 
 console.log("user log here")
