@@ -12,6 +12,7 @@ import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/raptor/internal/runtime"
 	"github.com/anthdm/raptor/internal/shared"
+	"github.com/anthdm/raptor/internal/spidermonkey"
 	"github.com/anthdm/raptor/internal/storage"
 	"github.com/anthdm/raptor/internal/types"
 	"github.com/anthdm/raptor/proto"
@@ -39,6 +40,7 @@ type Runtime struct {
 	runtime      *runtime.Runtime
 	repeat       actor.SendRepeater
 	stdout       *bytes.Buffer
+	script       []byte
 }
 
 func NewRuntime(store storage.Store, cache storage.ModCacher) actor.Producer {
@@ -95,10 +97,18 @@ func (r *Runtime) initialize(msg *proto.HTTPRequest) error {
 	args := runtime.Args{
 		Cache:        modCache,
 		DeploymentID: deploy.ID,
-		Blob:         deploy.Blob,
 		Engine:       msg.Runtime,
 		Stdout:       r.stdout,
 	}
+
+	switch args.Engine {
+	case "js":
+		r.script = deploy.Blob
+		args.Blob = spidermonkey.WasmBlob
+	default:
+		args.Blob = deploy.Blob
+	}
+
 	run, err := runtime.New(context.Background(), args)
 	if err != nil {
 		return err
@@ -118,9 +128,9 @@ func (r *Runtime) handleHTTPRequest(ctx *actor.Context, msg *proto.HTTPRequest) 
 		return
 	}
 
-	var args []string = nil
+	args := []string{}
 	if msg.Runtime == "js" {
-		args = []string{"", "-e", string(r.runtime.Blob())}
+		args = []string{"", "-e", string(r.script)}
 	}
 
 	req := bytes.NewReader(b)
