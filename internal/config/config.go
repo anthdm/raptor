@@ -9,14 +9,14 @@ import (
 )
 
 const defaultConfig = `
-wasmServerAddr 		= "localhost:5000"
-apiServerAddr 		= "localhost:3000"
+wasmServerAddr 		= "127.0.0.1:5000"
+apiServerAddr 		= "127.0.0.1:3000"
 storageDriver 		= "sqlite"
 apiToken			= "foobarbaz"
 authorization		= false
 
 [cluster]
-address 			= "localhost:6666"
+address 			= "127.0.0.1:6666"
 id					= "wasm_member_1" 
 region				= "eu-west"
 

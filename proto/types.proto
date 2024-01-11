@@ -14,6 +14,7 @@ message HTTPRequest {
 	string DeploymentID = 8;
 	map<string, string> Env = 9;
 	bool preview = 10;
+	actor.PID managerPID = 11; 
 } 
 
 message HeaderFields {
@@ -24,11 +25,6 @@ message HTTPResponse {
 	bytes response = 1;
 	int32 statusCode = 2;
 	string RequestID = 3;
-}
-
-message AddRuntime {
-	string key = 1;
-	actor.PID PID = 2;
 }
 
 message RemoveRuntime {

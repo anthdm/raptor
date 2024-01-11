@@ -14,6 +14,8 @@ type (
 	}
 )
 
+// RuntimeManager is an actor/receiver that is responsible for managing
+// runtimes across the cluster.
 type RuntimeManager struct {
 	runtimes map[string]*actor.PID
 	cluster  *cluster.Cluster
@@ -37,8 +39,6 @@ func (rm *RuntimeManager) Receive(c *actor.Context) {
 			rm.runtimes[msg.key] = pid
 		}
 		c.Respond(pid)
-	case *proto.AddRuntime:
-		rm.runtimes[msg.Key] = msg.PID
 	case *proto.RemoveRuntime:
 		delete(rm.runtimes, msg.Key)
 	case actor.Started:
