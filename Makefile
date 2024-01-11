@@ -18,6 +18,7 @@ api: build
 	@./bin/api --seed
 
 test:
+	@./internal/_testdata/build.sh
 	@go test ./internal/* -v
 
 proto:

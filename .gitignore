@@ -3,3 +3,4 @@ config.toml
 .db
 .modcache
 examples/*/*.wasm
+internal/_testdata/*.wasm

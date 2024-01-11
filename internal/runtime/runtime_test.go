@@ -17,7 +17,7 @@ import (
 )
 
 func TestRuntimeInvokeJSCode(t *testing.T) {
-	b, err := os.ReadFile("../../examples/js/index.js")
+	b, err := os.ReadFile("../_testdata/helloworld.js")
 	require.Nil(t, err)
 
 	req := &proto.HTTPRequest{
@@ -42,14 +42,15 @@ func TestRuntimeInvokeJSCode(t *testing.T) {
 	scriptArgs := []string{"", "-e", string(b)}
 	require.Nil(t, r.Invoke(bytes.NewReader(breq), nil, scriptArgs...))
 
-	_, _, status, err := shared.ParseStdout("js", out)
+	_, res, status, err := shared.ParseStdout("js", out)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "Hello world!", string(res))
 	require.Nil(t, r.Close())
 }
 
 func TestRuntimeInvokeGoCode(t *testing.T) {
-	b, err := os.ReadFile("../../examples/go/app.wasm")
+	b, err := os.ReadFile("../_testdata/helloworld.wasm")
 	require.Nil(t, err)
 
 	req := &proto.HTTPRequest{
@@ -71,8 +72,9 @@ func TestRuntimeInvokeGoCode(t *testing.T) {
 	r, err := New(context.Background(), args)
 	require.Nil(t, err)
 	require.Nil(t, r.Invoke(bytes.NewReader(breq), nil))
-	_, _, status, err := shared.ParseStdout("go", out)
+	_, res, status, err := shared.ParseStdout("go", out)
 	require.Nil(t, err)
 	require.Equal(t, http.StatusOK, status)
+	require.Equal(t, "Hello world!", string(res))
 	require.Nil(t, r.Close())
 }
