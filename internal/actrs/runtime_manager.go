@@ -3,6 +3,7 @@ package actrs
 import (
 	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
+	"github.com/anthdm/raptor/proto"
 )
 
 const KindRuntimeManager = "runtime_manager"
@@ -11,15 +12,10 @@ type (
 	requestRuntime struct {
 		key string
 	}
-	addRuntime struct {
-		key string
-		pid *actor.PID
-	}
-	removeRuntime struct {
-		key string
-	}
 )
 
+// RuntimeManager is an actor/receiver that is responsible for managing
+// runtimes across the cluster.
 type RuntimeManager struct {
 	runtimes map[string]*actor.PID
 	cluster  *cluster.Cluster
@@ -43,10 +39,8 @@ func (rm *RuntimeManager) Receive(c *actor.Context) {
 			rm.runtimes[msg.key] = pid
 		}
 		c.Respond(pid)
-	case addRuntime:
-		rm.runtimes[msg.key] = msg.pid
-	case removeRuntime:
-		delete(rm.runtimes, msg.key)
+	case *proto.RemoveRuntime:
+		delete(rm.runtimes, msg.Key)
 	case actor.Started:
 	case actor.Stopped:
 	case actor.Initialized:

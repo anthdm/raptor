@@ -58,20 +58,25 @@ func (r *Runtime) Receive(c *actor.Context) {
 	case actor.Started:
 		r.started = time.Now()
 		r.repeat = c.SendRepeat(c.PID(), shutdown{}, runtimeKeepAlive)
-		r.managerPID = c.Engine().Registry.GetPID(KindRuntimeManager, "1")
 	case actor.Stopped:
+		r.repeat.Stop()
 		// TODO: send metrics about the runtime to the metric actor.
 		_ = time.Since(r.started)
-		c.Send(r.managerPID, removeRuntime{key: r.deploymentID.String()})
+		c.Send(r.managerPID, &proto.RemoveRuntime{Key: r.deploymentID.String()})
 		r.runtime.Close()
 		// Releasing this mod will invalidate the cache for some reason.
 		// r.mod.Close(context.TODO())
 	case *proto.HTTPRequest:
+		slog.Info("runtime handling request", "request_id", msg.ID, "pid", c.PID())
 		// Refresh the keepAlive timer
 		r.repeat = c.SendRepeat(c.PID(), shutdown{}, runtimeKeepAlive)
 		if r.runtime == nil {
 			r.initialize(msg)
 		}
+		// In the ideal world we should ask the cluster for the PID of the manager we
+		// need to notify we are done invoking. Hollywood does not have that functionality
+		// yet. To fix this we have the PID of the manager in the request messsage.
+		r.managerPID = msg.ManagerPID
 		// Handle the HTTP request that is forwarded from the WASM server actor.
 		r.handleHTTPRequest(c, msg)
 	case shutdown:

@@ -31,26 +31,26 @@ func newRequestWithResponse(request *proto.HTTPRequest) requestWithResponse {
 
 // WasmServer is an HTTP server that will proxy and route the request to the corresponding function.
 type WasmServer struct {
-	server         *http.Server
-	self           *actor.PID
-	store          storage.Store
-	metricStore    storage.MetricStore
-	cache          storage.ModCacher
-	cluster        *cluster.Cluster
-	responses      map[string]chan *proto.HTTPResponse
-	runtimeManager *actor.PID
+	server            *http.Server
+	self              *actor.PID
+	store             storage.Store
+	metricStore       storage.MetricStore
+	cache             storage.ModCacher
+	cluster           *cluster.Cluster
+	responses         map[string]chan *proto.HTTPResponse
+	runtimeManagerPID *actor.PID
 }
 
 // NewWasmServer return a new wasm server given a storage and a mod cache.
 func NewWasmServer(addr string, cluster *cluster.Cluster, store storage.Store, metricStore storage.MetricStore, cache storage.ModCacher) actor.Producer {
 	return func() actor.Receiver {
 		s := &WasmServer{
-			store:          store,
-			metricStore:    metricStore,
-			cache:          cache,
-			cluster:        cluster,
-			responses:      make(map[string]chan *proto.HTTPResponse),
-			runtimeManager: cluster.Engine().Registry.GetPID(KindRuntimeManager, "1"),
+			store:             store,
+			metricStore:       metricStore,
+			cache:             cache,
+			cluster:           cluster,
+			responses:         make(map[string]chan *proto.HTTPResponse),
+			runtimeManagerPID: cluster.Engine().Registry.GetPID(KindRuntimeManager, "1"),
 		}
 		server := &http.Server{
 			Handler: s,
@@ -67,7 +67,6 @@ func (s *WasmServer) Receive(c *actor.Context) {
 		s.initialize(c)
 	case actor.Stopped:
 	case requestWithResponse:
-		s.responses[msg.request.ID] = msg.response
 		// TODO: let's say the manager is not able to respond in time for some reason
 		// I think we might need to spawn a new runtime right here.
 		pid := s.requestRuntime(c, msg.request.DeploymentID)
@@ -75,6 +74,8 @@ func (s *WasmServer) Receive(c *actor.Context) {
 			slog.Error("failed to request a runtime PID")
 			return
 		}
+		s.responses[msg.request.ID] = msg.response
+		msg.request.ManagerPID = s.runtimeManagerPID
 		s.cluster.Engine().SendWithSender(pid, msg.request, s.self)
 	case *proto.HTTPResponse:
 		if resp, ok := s.responses[msg.RequestID]; ok {
@@ -93,9 +94,9 @@ func (s *WasmServer) initialize(c *actor.Context) {
 
 // NOTE: There could be a case where we do not get a response in time, hence
 // the PID will be nil. This case is handled where we should spawn the runtime
-// ourselfs.
+// ourselves.
 func (s *WasmServer) requestRuntime(c *actor.Context, key string) *actor.PID {
-	res, err := c.Request(s.runtimeManager, requestRuntime{
+	res, err := c.Request(s.runtimeManagerPID, requestRuntime{
 		key: key,
 	}, time.Millisecond*5).Result()
 	if err != nil {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -16,13 +15,21 @@ import (
 )
 
 func main() {
-	var configFile string
-	flagSet := flag.NewFlagSet("raptor", flag.ExitOnError)
+	var (
+		configFile string
+		address    string
+		id         string
+		region     string
+	)
+
+	flagSet := flag.NewFlagSet("runtime", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
+	flagSet.StringVar(&address, "cluster-addr", "127.0.0.1:8134", "")
+	flagSet.StringVar(&id, "id", "runtime", "")
+	flagSet.StringVar(&region, "region", "default", "")
 	flagSet.Parse(os.Args[1:])
 
-	err := config.Parse(configFile)
-	if err != nil {
+	if err := config.Parse(configFile); err != nil {
 		log.Fatal(err)
 	}
 
@@ -39,32 +46,21 @@ func main() {
 		log.Fatal(err)
 	}
 	var (
-		modCache    = storage.NewDefaultModCache()
-		metricStore = store
+		modCache = storage.NewDefaultModCache()
+		// metricStore = store
 	)
-
 	clusterConfig := cluster.NewConfig().
-		WithListenAddr(config.Get().Cluster.Address).
-		WithRegion(config.Get().Cluster.Region).
-		WithID(config.Get().Cluster.ID)
+		WithListenAddr(address).
+		WithRegion(region).
+		WithID(id)
 	c, err := cluster.New(clusterConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, modCache), &cluster.KindConfig{})
 	c.Engine().Spawn(actrs.NewMetric, actrs.KindMetric, actor.WithID("1"))
-	c.Engine().Spawn(actrs.NewRuntimeManager(c), actrs.KindRuntimeManager, actor.WithID("1"))
 	c.Engine().Spawn(actrs.NewRuntimeLog, actrs.KindRuntimeLog, actor.WithID("1"))
 	c.Start()
-
-	server := actrs.NewWasmServer(
-		config.Get().WASMServerAddr,
-		c,
-		store,
-		metricStore,
-		modCache)
-	c.Engine().Spawn(server, actrs.KindWasmServer)
-	fmt.Printf("wasm server running\t%s\n", config.Get().WASMServerAddr)
 
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGTERM)

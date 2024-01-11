@@ -9,16 +9,11 @@ import (
 )
 
 const defaultConfig = `
-wasmServerAddr 		= "localhost:5000"
-apiServerAddr 		= "localhost:3000"
-storageDriver 		= "sqlite"
-apiToken			= "foobarbaz"
+httpIngressAddr 	= "127.0.0.1:5000"
+httpAPIAddr 		= "127.0.0.1:3000"
+storageDriver 		= "postgres"
+apiToken			= ""
 authorization		= false
-
-[cluster]
-address 			= "localhost:6666"
-id					= "wasm_member_1" 
-region				= "eu-west"
 
 [storage]
 user 				= "postgres"
@@ -41,21 +36,13 @@ type Storage struct {
 	SSLMode  string
 }
 
-type Cluster struct {
-	Address string
-	ID      string
-	Region  string
-}
-
 type Config struct {
-	APIServerAddr  string
-	WASMServerAddr string
-	StorageDriver  string
-	APIToken       string
-	Authorization  bool
-
-	Storage Storage
-	Cluster Cluster
+	HTTPAPIAddr     string
+	HTTPIngressAddr string
+	StorageDriver   string
+	APIToken        string
+	Authorization   bool
+	Storage         Storage
 }
 
 func Parse(path string) error {
@@ -93,10 +80,10 @@ func makeURL(address string) string {
 	return "http://" + net.JoinHostPort(host, port)
 }
 
-func GetWasmUrl() string {
-	return makeURL(config.WASMServerAddr)
+func IngressUrl() string {
+	return makeURL(config.HTTPIngressAddr)
 }
 
-func GetApiUrl() string {
-	return makeURL(config.APIServerAddr)
+func ApiUrl() string {
+	return makeURL(config.HTTPAPIAddr)
 }

@@ -35,6 +35,7 @@ require (
 )
 
 require (
+	github.com/go-chi/chi v1.5.5
 	github.com/pelletier/go-toml/v2 v2.1.1
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect

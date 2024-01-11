@@ -1,12 +1,18 @@
 .PHONY: proto
 
+PROTO_PATH := "../../go/pkg/mod/github.com/anthdm/hollywood@v0.0.0-20231230110106-87b55a8811e9/actor"
+
 build:
 	@go build -o bin/api cmd/api/main.go 
-	@go build -o bin/wasmserver cmd/wasmserver/main.go 
+	@go build -o bin/ingress cmd/ingress/main.go 
 	@go build -o bin/raptor cmd/cli/main.go 
+	@go build -o bin/runtime cmd/runtime/main.go 
 
-wasmserver: build
-	@./bin/wasmserver
+ingress: build
+	@./bin/ingress
+
+runtime: build
+	@./bin/runtime
 
 api: build
 	@./bin/api --seed
@@ -15,7 +21,7 @@ test:
 	@go test ./internal/* -v
 
 proto:
-	protoc --go_out=. --go_opt=paths=source_relative --proto_path=. proto/types.proto
+	protoc --go_out=. --go_opt=paths=source_relative --proto_path=$(PROTO_PATH) --proto_path=. proto/types.proto
 
 clean:
 	@rm -rf bin/api
