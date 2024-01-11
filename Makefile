@@ -4,12 +4,12 @@ PROTO_PATH := "../../go/pkg/mod/github.com/anthdm/hollywood@v0.0.0-2023123011010
 
 build:
 	@go build -o bin/api cmd/api/main.go 
-	@go build -o bin/wasmserver cmd/wasmserver/main.go 
+	@go build -o bin/ingress cmd/ingress/main.go 
 	@go build -o bin/raptor cmd/cli/main.go 
 	@go build -o bin/runtime cmd/runtime/main.go 
 
-wasmserver: build
-	@./bin/wasmserver
+ingress: build
+	@./bin/ingress
 
 runtime: build
 	@./bin/runtime

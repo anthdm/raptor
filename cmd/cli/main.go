@@ -61,7 +61,7 @@ func main() {
 		printUsage()
 	}
 
-	c := client.New(client.NewConfig().WithURL(config.GetApiUrl()))
+	c := client.New(client.NewConfig().WithURL(config.ApiUrl()))
 	command := command{
 		client: c,
 	}
@@ -175,7 +175,7 @@ func (c command) handleDeploy(args []string) {
 	}
 	fmt.Println(string(b))
 	fmt.Println()
-	fmt.Printf("deploy preview: %s/preview/%s\n", config.GetWasmUrl(), deploy.ID)
+	fmt.Printf("deploy preview: %s/preview/%s\n", config.IngressUrl(), deploy.ID)
 }
 
 func (c command) handleServeEndpoint(args []string) {

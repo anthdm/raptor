@@ -194,7 +194,7 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) error {
 
 	resp := PublishResponse{
 		DeploymentID: deploy.ID,
-		URL:          fmt.Sprintf("%s/live/%s", config.GetWasmUrl(), endpoint.ID),
+		URL:          fmt.Sprintf("%s/live/%s", config.IngressUrl(), endpoint.ID),
 	}
 	return writeJSON(w, http.StatusOK, resp)
 }

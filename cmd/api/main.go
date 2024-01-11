@@ -50,8 +50,8 @@ func main() {
 	}
 
 	server := api.NewServer(store, store, modCache)
-	fmt.Printf("api server running\t%s\n", config.GetApiUrl())
-	log.Fatal(server.Listen(config.Get().APIServerAddr))
+	fmt.Printf("api server running\t%s\n", config.ApiUrl())
+	log.Fatal(server.Listen(config.Get().HTTPAPIAddr))
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {
@@ -81,7 +81,7 @@ func seedEndpoint(store storage.Store, cache storage.ModCacher) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("endpoint seeded: %s/live/%s\n", config.GetWasmUrl(), endpoint.ID)
+	fmt.Printf("endpoint seeded: %s/live/%s\n", config.IngressUrl(), endpoint.ID)
 }
 
 func compile(ctx context.Context, cache wazero.CompilationCache, blob []byte) {

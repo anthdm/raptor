@@ -16,13 +16,21 @@ import (
 )
 
 func main() {
-	var configFile string
-	flagSet := flag.NewFlagSet("raptor", flag.ExitOnError)
+	var (
+		configFile string
+		address    string
+		id         string
+		region     string
+	)
+
+	flagSet := flag.NewFlagSet("ingress", flag.ExitOnError)
 	flagSet.StringVar(&configFile, "config", "config.toml", "")
+	flagSet.StringVar(&address, "cluster-addr", "127.0.0.1:8132", "")
+	flagSet.StringVar(&id, "id", "ingress", "")
+	flagSet.StringVar(&region, "region", "default", "")
 	flagSet.Parse(os.Args[1:])
 
-	err := config.Parse(configFile)
-	if err != nil {
+	if err := config.Parse(configFile); err != nil {
 		log.Fatal(err)
 	}
 
@@ -44,9 +52,9 @@ func main() {
 	)
 
 	clusterConfig := cluster.NewConfig().
-		WithListenAddr(config.Get().Cluster.Address).
-		WithRegion(config.Get().Cluster.Region).
-		WithID(config.Get().Cluster.ID)
+		WithListenAddr(address).
+		WithRegion(region).
+		WithID(id)
 	c, err := cluster.New(clusterConfig)
 	if err != nil {
 		log.Fatal(err)
@@ -58,13 +66,13 @@ func main() {
 	c.Start()
 
 	server := actrs.NewWasmServer(
-		config.Get().WASMServerAddr,
+		config.Get().HTTPIngressAddr,
 		c,
 		store,
 		metricStore,
 		modCache)
 	c.Engine().Spawn(server, actrs.KindWasmServer)
-	fmt.Printf("wasm server running\t%s\n", config.Get().WASMServerAddr)
+	fmt.Printf("ingress server running\t%s\n", config.Get().HTTPIngressAddr)
 
 	sigch := make(chan os.Signal, 1)
 	signal.Notify(sigch, syscall.SIGINT, syscall.SIGTERM)

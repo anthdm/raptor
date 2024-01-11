@@ -1,11 +1,13 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/anthdm/hollywood/actor"
 	"github.com/anthdm/hollywood/cluster"
 	"github.com/anthdm/raptor/internal/actrs"
 	"github.com/anthdm/raptor/internal/config"
@@ -13,9 +15,24 @@ import (
 )
 
 func main() {
-	if err := config.Parse("config.toml"); err != nil {
+	var (
+		configFile string
+		address    string
+		id         string
+		region     string
+	)
+
+	flagSet := flag.NewFlagSet("runtime", flag.ExitOnError)
+	flagSet.StringVar(&configFile, "config", "config.toml", "")
+	flagSet.StringVar(&address, "cluster-addr", "127.0.0.1:8134", "")
+	flagSet.StringVar(&id, "id", "runtime", "")
+	flagSet.StringVar(&region, "region", "default", "")
+	flagSet.Parse(os.Args[1:])
+
+	if err := config.Parse(configFile); err != nil {
 		log.Fatal(err)
 	}
+
 	var (
 		user    = config.Get().Storage.User
 		pw      = config.Get().Storage.Password
@@ -33,17 +50,16 @@ func main() {
 		// metricStore = store
 	)
 	clusterConfig := cluster.NewConfig().
-		WithListenAddr("127.0.0.1:6000").
-		WithRegion("eu-west").
-		WithID("member_2")
+		WithListenAddr(address).
+		WithRegion(region).
+		WithID(id)
 	c, err := cluster.New(clusterConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 	c.RegisterKind(actrs.KindRuntime, actrs.NewRuntime(store, modCache), &cluster.KindConfig{})
-	// c.Engine().Spawn(actrs.NewMetric, actrs.KindMetric, actor.WithID("1"))
-	// c.Engine().Spawn(actrs.NewRuntimeManager(c), actrs.KindRuntimeManager, actor.WithID("1"))
-	// c.Engine().Spawn(actrs.NewRuntimeLog, actrs.KindRuntimeLog, actor.WithID("1"))
+	c.Engine().Spawn(actrs.NewMetric, actrs.KindMetric, actor.WithID("1"))
+	c.Engine().Spawn(actrs.NewRuntimeLog, actrs.KindRuntimeLog, actor.WithID("1"))
 	c.Start()
 
 	sigch := make(chan os.Signal, 1)
