@@ -22,8 +22,8 @@ jobs:
       - name: Get Code
         uses: actions/checkout@v4
 
-      - name: Build example
-        run: GOOS=wasip1 GOARCH=wasm go build -o examples/go/app.wasm examples/go/main.go
+      - name: Build testdata
+        run: ./internal/_testdata/build.sh 
 
       - name: Test
         run: go test ./internal/*
