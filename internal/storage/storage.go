@@ -9,7 +9,6 @@ type Store interface {
 	CreateEndpoint(*types.Endpoint) error
 	UpdateEndpoint(uuid.UUID, UpdateEndpointParams) error
 	GetEndpoint(uuid.UUID) (*types.Endpoint, error)
-	GetEndpoints() ([]types.Endpoint, error)
 	CreateDeployment(*types.Deployment) error
 	GetDeployment(uuid.UUID) (*types.Deployment, error)
 }

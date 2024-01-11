@@ -11,9 +11,13 @@ import (
 	"strings"
 
 	"github.com/anthdm/raptor/proto"
+	"github.com/google/uuid"
 )
 
-const magicLen = 8
+const (
+	magicLen = 8
+	UUIDZERO = "00000000-0000-0000-0000-000000000000"
+)
 
 var errInvalidHTTPResponse = errors.New("invalid HTTP response")
 
@@ -98,4 +102,8 @@ func GetDecodedStdout(runtime string, stdout io.Reader) io.Reader {
 	default:
 		return stdout
 	}
+}
+
+func IsZeroUUID(id uuid.UUID) bool {
+	return id.String() == UUIDZERO
 }

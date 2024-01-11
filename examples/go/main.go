@@ -21,5 +21,5 @@ func main() {
 	router := chi.NewMux()
 	router.Get("/dashboard", handleDashboard)
 	router.Get("/login", handleLogin)
-	raptor.Handle(http.HandlerFunc(handleLogin))
+	raptor.Handle(router)
 }

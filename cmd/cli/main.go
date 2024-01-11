@@ -13,22 +13,23 @@ import (
 	"github.com/anthdm/raptor/internal/client"
 	"github.com/anthdm/raptor/internal/config"
 	"github.com/anthdm/raptor/internal/types"
+	"github.com/anthdm/raptor/internal/version"
 	"github.com/google/uuid"
 )
 
 func printUsage() {
 	fmt.Printf(`
-Raptor cli v0.0.1
+Raptor cli v%s
 
 Usage: raptor COMMAND
 
 Commands:
   endpoint			Create a new endpoint
-  publish			Publish a specific deployment to your applications endpoint
+  publish			Publish a deployment to an endpoint
   deploy			Create a new deployment
   help				Show usage
 
-`)
+`, version.Version)
 	os.Exit(0)
 }
 

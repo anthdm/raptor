@@ -48,7 +48,7 @@ func (s *Server) initRouter() {
 	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deployment", makeAPIHandler(s.handleCreateDeployment))
-	s.router.Post("/publish/{id}", makeAPIHandler(s.handlePublish))
+	s.router.Post("/publish", makeAPIHandler(s.handlePublish))
 }
 
 func handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -115,9 +115,16 @@ func (s *Server) handleCreateDeployment(w http.ResponseWriter, r *http.Request) 
 		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	}
 
+	// TODO:
+	// 1. validate the contents of the blob.
+	// 2. make sure we have a limit on the maximum blob size.
 	b, err := io.ReadAll(r.Body)
 	if err != nil {
-		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	if len(b) == 0 {
+		err := fmt.Errorf("no blob")
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 	deploy := types.NewDeployment(endpoint, b)
 	if err := s.store.CreateDeployment(deploy); err != nil {
@@ -139,11 +146,12 @@ func (s *Server) handleGetEndpoint(w http.ResponseWriter, r *http.Request) error
 }
 
 func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) error {
-	endpoints, err := s.store.GetEndpoints()
-	if err != nil {
-		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
-	}
-	return writeJSON(w, http.StatusOK, endpoints)
+	return nil
+	// endpoints, err := s.store.GetEndpoints()
+	// if err != nil {
+	// 	return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	// }
+	// return writeJSON(w, http.StatusOK, endpoints)
 }
 
 // PublishParams holds all the necessary fields to publish a specific
@@ -158,11 +166,12 @@ type PublishResponse struct {
 }
 
 func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) error {
-	deployID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
+	var params PublishParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		err := fmt.Errorf("failed to parse the response body: %s", err)
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
-	deploy, err := s.store.GetDeployment(deployID)
+	deploy, err := s.store.GetDeployment(params.DeploymentID)
 	if err != nil {
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
@@ -173,13 +182,8 @@ func (s *Server) handlePublish(w http.ResponseWriter, r *http.Request) error {
 
 	currentDeploymentID := endpoint.ActiveDeploymentID
 
-	var params PublishParams
-	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
-		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
-	}
-
-	if currentDeploymentID.String() == params.DeploymentID.String() {
-		err := fmt.Errorf("deploy %s already active", params.DeploymentID)
+	if currentDeploymentID.String() == deploy.ID.String() {
+		err := fmt.Errorf("deploy %s already active", deploy.ID)
 		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
 	}
 

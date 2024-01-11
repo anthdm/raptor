@@ -45,7 +45,7 @@ func (c *Client) Publish(params api.PublishParams) (*api.PublishResponse, error)
 	if err != nil {
 		return nil, err
 	}
-	url := fmt.Sprintf("%s/publish/%s", c.config.url, params.DeploymentID)
+	url := fmt.Sprintf("%s/publish", c.config.url)
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
 	if err != nil {
 		return nil, err
