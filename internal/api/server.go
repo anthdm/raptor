@@ -178,13 +178,12 @@ func (s *Server) handleGetEndpoint(w http.ResponseWriter, r *http.Request) error
 	return writeJSON(w, http.StatusOK, endpoint)
 }
 
-func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) error {
-	return nil
-	// endpoints, err := s.store.GetEndpoints()
-	// if err != nil {
-	// 	return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
-	// }
-	// return writeJSON(w, http.StatusOK, endpoints)
+func (s *Server) handleGetEndpoints(w http.ResponseWriter, _ *http.Request) error {
+	endpoints, err := s.store.GetEndpoints()
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, endpoints)
 }
 
 // PublishParams holds all the necessary fields to publish a specific

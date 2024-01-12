@@ -25,6 +25,7 @@ Usage: raptor COMMAND
 
 Commands:
   endpoint			Create a new endpoint
+  list				List all endpoints
   publish			Publish a deployment to an endpoint
   deploy			Create a new deployment
   help				Show usage
@@ -72,6 +73,8 @@ func main() {
 		command.handlePublish(args[1:])
 	case "endpoint":
 		command.handleEndpoint(args[1:])
+	case "list":
+		command.handleListEndpoints(args[1:])
 	case "deploy":
 		command.handleDeploy(args[1:])
 	case "serve":
@@ -143,6 +146,21 @@ func (c command) handleEndpoint(args []string) {
 		Environment: makeEnvMap(env),
 	}
 	endpoint, err := c.client.CreateEndpoint(params)
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	b, err := json.MarshalIndent(endpoint, "", "    ")
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	fmt.Println(string(b))
+}
+
+func (c command) handleListEndpoints(args []string) {
+	flagSet := flag.NewFlagSet("lists", flag.ExitOnError)
+	_ = flagSet.Parse(args)
+
+	endpoint, err := c.client.ListEndpoints()
 	if err != nil {
 		printErrorAndExit(err)
 	}

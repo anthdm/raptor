@@ -64,20 +64,20 @@ func (s *SQLStore) GetEndpoint(id uuid.UUID) (*types.Endpoint, error) {
 	return &endpoint, err
 }
 
-func (s *SQLStore) GetEndpoints() ([]types.Endpoint, error) {
+func (s *SQLStore) GetEndpoints() ([]*types.Endpoint, error) {
 	rows, err := s.db.Query("SELECT * FROM endpoint")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var endpoints []types.Endpoint
+	var endpoints []*types.Endpoint
 	for rows.Next() {
 		var endpoint types.Endpoint
 		if err := scanEndpoint(rows, &endpoint); err != nil {
 			return nil, err
 		}
-		endpoints = append(endpoints, endpoint)
+		endpoints = append(endpoints, &endpoint)
 	}
 	return endpoints, nil
 }
