@@ -27,6 +27,7 @@ Commands:
   endpoint			Create a new endpoint
   publish			Publish a deployment to an endpoint
   deploy			Create a new deployment
+  list-deploy		Lists all deployments
   help				Show usage
 
 `, version.Version)
@@ -73,6 +74,8 @@ func main() {
 	case "endpoint":
 		command.handleEndpoint(args[1:])
 	case "deploy":
+		command.handleDeploy(args[1:])
+	case "list-deploy":
 		command.handleDeploy(args[1:])
 	case "serve":
 		if len(args) < 2 {
@@ -181,6 +184,21 @@ func (c command) handleDeploy(args []string) {
 	fmt.Println(string(b))
 	fmt.Println()
 	fmt.Printf("deploy preview: %s/preview/%s\n", config.IngressUrl(), deploy.ID)
+}
+
+func (c command) handleListDeploy(args []string) {
+	flagSet := flag.NewFlagSet("list-deploy", flag.ExitOnError)
+	_ = flagSet.Parse(args)
+
+	endpoint, err := c.client.ListEndpoints()
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	b, err := json.MarshalIndent(endpoint, "", "    ")
+	if err != nil {
+		printErrorAndExit(err)
+	}
+	fmt.Println(string(b))
 }
 
 func (c command) handleServeEndpoint(args []string) {

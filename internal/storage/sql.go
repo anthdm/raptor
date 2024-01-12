@@ -111,6 +111,24 @@ RETURNING id`
 	return err
 }
 
+func (s *SQLStore) GetDeployments() ([]*types.Deployment, error) {
+	rows, err := s.db.Query("SELECT * FROM deployment")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var deployments []*types.Deployment
+	for rows.Next() {
+		var deploy types.Deployment
+		if err := scanDeploy(rows, &deploy); err != nil {
+			return nil, err
+		}
+		deployments = append(deployments, &deploy)
+	}
+	return deployments, nil
+}
+
 func (s *SQLStore) CreateRuntimeMetric(metric *types.RuntimeMetric) error {
 	return nil
 }

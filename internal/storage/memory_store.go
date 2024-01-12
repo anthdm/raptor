@@ -73,6 +73,18 @@ func (s *MemoryStore) GetDeployment(id uuid.UUID) (*types.Deployment, error) {
 	return deploy, nil
 }
 
+func (s *MemoryStore) GetDeployments() ([]*types.Deployment, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	deployments := make([]*types.Deployment, 0, len(s.deploys))
+	for _, deploy := range s.deploys {
+		deployments = append(deployments, deploy)
+	}
+
+	return deployments, nil
+}
+
 func (s *MemoryStore) CreateRuntimeMetric(_ *types.RuntimeMetric) error {
 	return nil
 }

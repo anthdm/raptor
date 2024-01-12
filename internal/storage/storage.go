@@ -11,6 +11,7 @@ type Store interface {
 	GetEndpoint(uuid.UUID) (*types.Endpoint, error)
 	CreateDeployment(*types.Deployment) error
 	GetDeployment(uuid.UUID) (*types.Deployment, error)
+	GetDeployments() ([]*types.Deployment, error)
 }
 
 type MetricStore interface {
