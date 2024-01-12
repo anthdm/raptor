@@ -19,7 +19,7 @@ api: build
 
 test:
 	@./internal/_testdata/build.sh
-	@go test ./internal/*
+	@go test -v ./internal/*
 
 proto:
 	protoc --go_out=. --go_opt=paths=source_relative --proto_path=$(PROTO_PATH) --proto_path=. proto/types.proto
