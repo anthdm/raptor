@@ -125,6 +125,10 @@ func (c command) handleEndpoint(args []string) {
 	flagset.Var(&env, "env", "Environment variables for this endpoint")
 	_ = flagset.Parse(args)
 
+	if len(runtime) == 0 {
+		fmt.Println("please provide a valid runtime [--runtime go, --runtime js]")
+		os.Exit(1)
+	}
 	if !types.ValidRuntime(runtime) {
 		fmt.Printf("invalid runtime %s, only go and js are currently supported\n", runtime)
 		os.Exit(1)

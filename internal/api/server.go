@@ -48,6 +48,7 @@ func (s *Server) initRouter() {
 	s.router.Get("/endpoint/{id}/metrics", makeAPIHandler(s.handleGetEndpointMetrics))
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deployment", makeAPIHandler(s.handleCreateDeployment))
+	s.router.Put("/endpoint/{id}", makeAPIHandler(s.handleUpdateEndpoint))
 	s.router.Post("/publish", makeAPIHandler(s.handlePublish))
 }
 
@@ -82,6 +83,38 @@ func (p CreateEndpointParams) validate() error {
 		return fmt.Errorf("invalid runtime given: %s", p.Runtime)
 	}
 	return nil
+}
+
+type UpdateEndpointParams struct {
+	Environment map[string]string `json:"environment"`
+}
+
+func (s *Server) handleUpdateEndpoint(w http.ResponseWriter, r *http.Request) error {
+	endpointID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	endpoint, err := s.store.GetEndpoint(endpointID)
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	var params UpdateEndpointParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		return writeJSON(w, http.StatusBadRequest, ErrorResponse(err))
+	}
+	defer r.Body.Close()
+	if len(params.Environment) > 0 {
+		for k, v := range params.Environment {
+			endpoint.Environment[k] = v
+		}
+	}
+	updateParams := storage.UpdateEndpointParams{
+		Environment: endpoint.Environment,
+	}
+	if err := s.store.UpdateEndpoint(endpointID, updateParams); err != nil {
+		return writeJSON(w, http.StatusUnprocessableEntity, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, map[string]string{"status": "OK"})
 }
 
 func (s *Server) handleCreateEndpoint(w http.ResponseWriter, r *http.Request) error {

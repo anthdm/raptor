@@ -14,6 +14,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestUpdateEndpoint(t *testing.T) {
+	s := createServer()
+	endpoint := seedEndpoint(t, s)
+	expected := map[string]string{"A": "B", "C": "D", "FOO": "BAR"}
+
+	params := UpdateEndpointParams{
+		Environment: map[string]string{"A": "B", "C": "D"},
+	}
+	b, err := json.Marshal(params)
+	require.Nil(t, err)
+
+	req := httptest.NewRequest("PUT", "/endpoint/"+endpoint.ID.String(), bytes.NewReader(b))
+	resp := httptest.NewRecorder()
+	s.router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusOK, resp.Result().StatusCode)
+	require.Equal(t, expected, endpoint.Environment)
+}
+
 func TestCreateEndpoint(t *testing.T) {
 	s := createServer()
 
