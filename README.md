@@ -123,3 +123,57 @@ Call the Wasm function
 Request Body: `any` (passed to function)
 
 Response Body: `any` (returned from function)
+
+## Raptor CLI
+
+## Supported runtimes
+| Runtime    | CLI value |
+|------------|-----------|
+| Javascript | js        |
+| Golang     | go        |
+
+### Create endpoint
+
+```cmd
+./bin/raptor endpoint --runtime <runtime-Value> --name "My application name"
+```
+Example Response:
+```json
+{
+  "id": "60afbade-ce43-416e-8d7a-62f3f5ed5f8e",
+  "name": "My application name",
+  "runtime": "js",
+  "active_deployment_id": "00000000-0000-0000-0000-000000000000",
+  "environment": {},
+  "deployment_history": [],
+  "created_at": "2024-01-13T04:57:37.916478+01:00"
+}
+```
+
+### Create preview deploy
+```cmd
+./bin/raptor deploy --endpoint <endpointID> --file <file_path_to_file>.<runtime_value>
+```
+Example Response:
+```json
+{
+  "id": "3194253c-ef0b-4f7a-a3a6-0669aa533ec0",
+  "endpoint_id": "60afbade-ce43-416e-8d7a-62f3f5ed5f8e",
+  "hash": "949614f7bdf32b8b4f6bb969a3674a33",
+  "created_at": "2024-01-13T05:02:16.22648+01:00"
+}
+```
+You will be able to access the deploy preview on `deploy preview: http://0.0.0.0:80/preview/<deployID>`
+
+### Publish created deploy
+```cmd
+./bin/raptor publish --deploy <deployID>
+```
+Example Response:
+```json
+{
+  "deployment_id": "3194253c-ef0b-4f7a-a3a6-0669aa533ec0",
+  "url": "http://0.0.0.0:80/live/60afbade-ce43-416e-8d7a-62f3f5ed5f8e"
+}
+
+```
