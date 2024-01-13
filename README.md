@@ -177,3 +177,13 @@ Example Response:
 }
 
 ```
+
+# Community and discussions
+Join our Discord community with over 2000 members for questions and a nice chat.
+<br>
+<a href="https://discord.gg/gdwXmXYNTh">
+<img src="https://discordapp.com/api/guilds/1025692014903316490/widget.png?style=banner2" alt="Discord Banner"/>
+</a>
+
+# License
+Raptor is licensed under the Apache-2.0 licence.
