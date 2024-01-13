@@ -163,7 +163,7 @@ Example Response:
   "created_at": "2024-01-13T05:02:16.22648+01:00"
 }
 ```
-You will be able to access the deploy preview on `deploy preview: http://0.0.0.0:80/preview/<deployID>`
+You will be able to access the deploy preview on: `http://0.0.0.0:80/preview/<deployID>`
 
 ### Publish created deploy
 ```cmd
