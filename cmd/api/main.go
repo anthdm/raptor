@@ -55,7 +55,7 @@ func main() {
 }
 
 func seedEndpoint(store storage.Store, cache storage.ModCacher) {
-	b, err := os.ReadFile("examples/go/app.wasm")
+	b, err := os.ReadFile("examples/js/index.js")
 	if err != nil {
 		log.Fatal(err)
 	}
