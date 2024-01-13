@@ -76,7 +76,7 @@ func main() {
 	case "deploy":
 		command.handleDeploy(args[1:])
 	case "list-deploy":
-		command.handleDeploy(args[1:])
+		command.handleListDeploy(args[1:])
 	case "serve":
 		if len(args) < 2 {
 			printUsage()
@@ -190,7 +190,7 @@ func (c command) handleListDeploy(args []string) {
 	flagSet := flag.NewFlagSet("list-deploy", flag.ExitOnError)
 	_ = flagSet.Parse(args)
 
-	endpoint, err := c.client.ListEndpoints()
+	endpoint, err := c.client.ListDeployments()
 	if err != nil {
 		printErrorAndExit(err)
 	}

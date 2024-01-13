@@ -132,3 +132,22 @@ func (c *Client) ListEndpoints() ([]types.Endpoint, error) {
 	resp.Body.Close()
 	return endpoints, nil
 }
+
+func (c *Client) ListDeployments() ([]types.Deployment, error) {
+	url := fmt.Sprintf("%s/deployments", c.config.url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	var deploys []types.Deployment
+	if err := json.NewDecoder(resp.Body).Decode(&deploys); err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+	return deploys, nil
+}
