@@ -81,6 +81,24 @@ func TestGetEndpoint(t *testing.T) {
 	require.Equal(t, *endpoint, other)
 }
 
+func TestGetEndpoints(t *testing.T) {
+	s := createServer()
+	endpoints := seedEndpoints(t, s)
+
+	req := httptest.NewRequest("GET", "/endpoint", nil)
+	resp := httptest.NewRecorder()
+
+	s.router.ServeHTTP(resp, req)
+
+	require.Equal(t, http.StatusOK, resp.Result().StatusCode)
+
+	var others []*types.Endpoint
+	err := json.NewDecoder(resp.Body).Decode(&others)
+	require.Nil(t, err)
+
+	require.True(t, endpointsExistsInEndpoints(endpoints, others))
+}
+
 func TestCreateDeploy(t *testing.T) {
 	s := createServer()
 	endpoint := seedEndpoint(t, s)
@@ -130,6 +148,42 @@ func seedEndpoint(t *testing.T, s *Server) *types.Endpoint {
 	e := types.NewEndpoint("My endpoint", "go", map[string]string{"FOO": "BAR"})
 	require.Nil(t, s.store.CreateEndpoint(e))
 	return e
+}
+func seedEndpoints(t *testing.T, s *Server) []*types.Endpoint {
+	items := []map[string]string{
+		{"FOO": "BAR"},
+		{"Bar": "foo"},
+		{"Yada": "Yada"},
+	}
+
+	endpoints := make([]*types.Endpoint, 0, len(items))
+	for _, item := range items {
+		e := types.NewEndpoint("My endpoint", "go", item)
+		require.Nil(t, s.store.CreateEndpoint(e))
+		endpoints = append(endpoints, e)
+	}
+	return endpoints
+}
+
+func endpointsExistsInEndpoints(s1, s2 []*types.Endpoint) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	for _, item1 := range s1 {
+		found := false
+		for _, item2 := range s2 {
+			if item1.ID == item2.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+
+	return true
 }
 
 func createServer() *Server {

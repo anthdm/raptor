@@ -38,6 +38,18 @@ func (s *MemoryStore) GetEndpoint(id uuid.UUID) (*types.Endpoint, error) {
 	return e, nil
 }
 
+func (s *MemoryStore) GetEndpoints() ([]*types.Endpoint, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	endpoints := make([]*types.Endpoint, 0, len(s.endpoints))
+	for _, endpoint := range s.endpoints {
+		endpoints = append(endpoints, endpoint)
+	}
+
+	return endpoints, nil
+}
+
 func (s *MemoryStore) UpdateEndpoint(id uuid.UUID, params UpdateEndpointParams) error {
 	endpoint, err := s.GetEndpoint(id)
 	if err != nil {
