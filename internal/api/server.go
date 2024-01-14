@@ -49,6 +49,7 @@ func (s *Server) initRouter() {
 	s.router.Post("/endpoint", makeAPIHandler(s.handleCreateEndpoint))
 	s.router.Post("/endpoint/{id}/deployment", makeAPIHandler(s.handleCreateDeployment))
 	s.router.Put("/endpoint/{id}", makeAPIHandler(s.handleUpdateEndpoint))
+	s.router.Get("/deployments", makeAPIHandler(s.handleGetDeployments))
 	s.router.Post("/publish", makeAPIHandler(s.handlePublish))
 }
 
@@ -185,6 +186,14 @@ func (s *Server) handleGetEndpoints(w http.ResponseWriter, r *http.Request) erro
 	// 	return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
 	// }
 	// return writeJSON(w, http.StatusOK, endpoints)
+}
+
+func (s *Server) handleGetDeployments(w http.ResponseWriter, r *http.Request) error {
+	deployments, err := s.store.GetDeployments()
+	if err != nil {
+		return writeJSON(w, http.StatusNotFound, ErrorResponse(err))
+	}
+	return writeJSON(w, http.StatusOK, deployments)
 }
 
 // PublishParams holds all the necessary fields to publish a specific
