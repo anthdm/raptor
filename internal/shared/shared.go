@@ -21,8 +21,8 @@ const (
 
 var errInvalidHTTPResponse = errors.New("invalid HTTP response")
 
-func ParseStdout(runtime string, stdout io.Reader) (logs []byte, resp []byte, status int, err error) {
-	stdoutb, err := io.ReadAll(GetDecodedStdout(runtime, stdout))
+func ParseStdout(stdout io.Reader) (logs []byte, resp []byte, status int, err error) {
+	stdoutb, err := io.ReadAll(stdout)
 	if err != nil {
 		return
 	}
@@ -91,17 +91,6 @@ func makeProtoHeader(header http.Header) map[string]*proto.HeaderFields {
 		}
 	}
 	return m
-}
-
-func GetDecodedStdout(runtime string, stdout io.Reader) io.Reader {
-	switch runtime {
-	case "go":
-		return stdout
-	case "js":
-		return hex.NewDecoder(stdout)
-	default:
-		return stdout
-	}
 }
 
 func IsZeroUUID(id uuid.UUID) bool {

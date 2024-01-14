@@ -34,7 +34,7 @@ the big brown fox
 		builder.WriteString(userLogs)
 		builder.WriteString(userResp)
 		builder.Write(buf)
-		if _, _, _, err := ParseStdout("go", builder); err != nil {
+		if _, _, _, err := ParseStdout(builder); err != nil {
 			log.Fatal(err)
 		}
 		builder.Reset()
@@ -54,7 +54,7 @@ func TestParseWithoutUserLogs(t *testing.T) {
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(userResp)))
 	builder.Write(buf)
 
-	logs, resp, status, err := ParseStdout("go", builder)
+	logs, resp, status, err := ParseStdout(builder)
 	require.Nil(t, err)
 	require.Equal(t, int(statusCode), status)
 	require.Equal(t, userResp, string(resp))
@@ -81,7 +81,7 @@ the big brown fox
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(userResp)))
 	builder.Write(buf)
 
-	logs, resp, status, err := ParseStdout("go", builder)
+	logs, resp, status, err := ParseStdout(builder)
 	require.Nil(t, err)
 	require.Equal(t, int(statusCode), status)
 	require.Equal(t, userResp, string(resp))
